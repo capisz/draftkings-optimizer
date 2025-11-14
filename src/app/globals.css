@@ -1,0 +1,101 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== Global Theme Styles ========== */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #1b1c1f;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Scrollbar (optional aesthetic tweak) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* ----------------------------
+   Loading Overlay Animations
+----------------------------- */
+
+/* ----------------------------
+   Loading Overlay Animations
+----------------------------- */
+
+@keyframes progressFill {
+  0% { width: 0%; }
+  50% { width: 65%; }
+  80% { width: 88%; }
+  100% { width: 100%; }
+}
+
+.animate-progress {
+  animation: progressFill 1.6s ease-in-out infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-spin {
+  animation: spin 1.4s linear infinite;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -500px 0; }
+  100% { background-position: 500px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #222 0px,
+    #333 40px,
+    #222 80px
+  );
+  background-size: 500px 100%;
+  animation: shimmer 1.4s infinite alternate;
+}
+
+/* Blur grid when generating */
+.blur-when-loading {
+  filter: blur(4px);
+  opacity: 0.4;
+  transition: 0.3s ease;
+}
+
+/* Spinning crown */
+.loading-spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+

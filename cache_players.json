@@ -1,0 +1,31 @@
+{
+  "season": 2025,
+  "count": 5,
+  "data": [
+    {
+      "first_name": "Jayson",
+      "last_name": "Tatum",
+      "dk_efficiency": 47.2
+    },
+    {
+      "first_name": "Giannis",
+      "last_name": "Antetokounmpo",
+      "dk_efficiency": 54.8
+    },
+    {
+      "first_name": "Shai",
+      "last_name": "Gilgeous-Alexander",
+      "dk_efficiency": 52.1
+    },
+    {
+      "first_name": "Luka",
+      "last_name": "Doncic",
+      "dk_efficiency": 56.5
+    },
+    {
+      "first_name": "Nikola",
+      "last_name": "Jokic",
+      "dk_efficiency": 57.3
+    }
+  ]
+}

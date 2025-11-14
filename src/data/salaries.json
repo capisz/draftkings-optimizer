@@ -1,0 +1,58 @@
+{
+  "players": [
+    {
+      "name": "Giannis Antetokounmpo",
+      "team": "MIL",
+      "position": "PF",
+      "espnId": 3032977,
+      "salary": 11200,
+      "last5": [
+        {
+          "date": "2025-11-10",
+          "opp": "@ BOS",
+          "points": 32,
+          "rebounds": 14,
+          "assists": 8,
+          "steals": 1,
+          "blocks": 1,
+          "turnovers": 3,
+          "doubleDouble": true,
+          "tripleDouble": false
+        },
+        {
+          "date": "2025-11-08",
+          "opp": "vs CHI",
+          "points": 28,
+          "rebounds": 11,
+          "assists": 6,
+          "steals": 0,
+          "blocks": 1,
+          "turnovers": 2,
+          "doubleDouble": true,
+          "tripleDouble": false
+        }
+      ]
+    },
+    {
+      "name": "LeBron James",
+      "team": "LAL",
+      "position": "SF",
+      "espnId": 1966,
+      "salary": 9800,
+      "last5": [
+        {
+          "date": "2025-11-09",
+          "opp": "@ DEN",
+          "points": 25,
+          "rebounds": 7,
+          "assists": 9,
+          "steals": 2,
+          "blocks": 0,
+          "turnovers": 4,
+          "doubleDouble": false,
+          "tripleDouble": false
+        }
+      ]
+    }
+  ]
+}
