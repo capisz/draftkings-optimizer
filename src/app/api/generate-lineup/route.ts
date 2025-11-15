@@ -1,5 +1,5 @@
 // src/app/api/generate-lineup/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const SALARY_CAP = 50000;
 
@@ -48,16 +48,19 @@ function weightedScore(p: Player): number {
   return p.avgDK * 0.7 + p.efficiency * 0.3;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    // Use the same data as your grid by calling /api/players
-    const base = new URL(req.url);
-    const playersRes = await fetch(new URL("/api/players", base), {
+    // ✅ Build the correct origin for *this* deployment (local or Vercel)
+    const origin = req.nextUrl.origin;
+
+    // ✅ Call /api/players on the same host (no localhost hard-coding)
+    const playersRes = await fetch(`${origin}/api/players`, {
       cache: "no-store",
     });
 
     if (!playersRes.ok) {
-      throw new Error(`/api/players failed (${playersRes.status})`);
+      const txt = await playersRes.text().catch(() => "");
+      throw new Error(`/api/players failed (${playersRes.status}): ${txt}`);
     }
 
     const json = await playersRes.json();
@@ -129,7 +132,7 @@ export async function GET(req: Request) {
       }
 
       const slot = SLOTS[slotIndex];
-      const candidates = candidatesBySlot[slot];
+      const candidates = candidatesBySlot[slot] || [];
 
       for (const p of candidates) {
         if (usedIds.has(p.id)) continue;
@@ -144,7 +147,7 @@ export async function GET(req: Request) {
           slotIndex + 1,
           usedIds,
           newSalary,
-          currentScore + p._score,
+          currentScore + (p as any)._score,
           lineup
         );
 
@@ -162,7 +165,7 @@ export async function GET(req: Request) {
       let salary = 0;
 
       for (const slot of SLOTS) {
-        const candidates = candidatesBySlot[slot];
+        const candidates = candidatesBySlot[slot] || [];
         for (const p of candidates) {
           if (used.has(p.id)) continue;
           if (salary + p.salary > SALARY_CAP) continue;
@@ -209,7 +212,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         error: "Lineup generation failed",
-        details: err.message ?? "Unknown error",
+        details: err?.message ?? "Unknown error",
       },
       { status: 500 }
     );
