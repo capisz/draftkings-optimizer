@@ -288,7 +288,7 @@ export default function Home() {
         {/* TODAY'S MATCHUPS HEADER – main header */}
         {matchups.length > 0 && (
           <div className="mx-auto max-w-4xl mb-4 px-4">
-            <div className="bg-zinc-900/80 rounded-xl p-4 shadow-md">
+<div className="bg-zinc-900/80 rounded-xl p-4 shadow-md overflow-hidden">
               <div className="flex items-start justify-between gap-4">
                 {/* Left: title, countdown, conveyor chips */}
                 <div className="flex-1">
