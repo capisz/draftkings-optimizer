@@ -1,5 +1,6 @@
 // src/app/api/generate-lineup/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import raw from "@/data/players-2025-11-14-last5.json";
 
 const SALARY_CAP = 50000;
 
@@ -9,10 +10,28 @@ type Last5Game = {
   dk: number;
 };
 
-type Player = {
+type PlayerJson = {
   id: string;
   name: string;
   position: string; // e.g. "PG/SG"
+  team: string;
+  salary: number;
+  avgDK: number;
+  efficiency: number;
+  image?: string | null;
+  gameInfo?: string;
+  last5?: Last5Game[];
+};
+
+type Payload = {
+  count: number;
+  data: PlayerJson[];
+};
+
+type Player = {
+  id: string;
+  name: string;
+  position: string;
   team: string;
   salary: number;
   avgDK: number;
@@ -48,25 +67,13 @@ function weightedScore(p: Player): number {
   return p.avgDK * 0.7 + p.efficiency * 0.3;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // ✅ Build the correct origin for *this* deployment (local or Vercel)
-    const origin = req.nextUrl.origin;
+    // ✅ Use the same static JSON as /api/players, no HTTP calls at all
+    const payload = raw as Payload;
+    const rawPlayers = payload.data || [];
 
-    // ✅ Call /api/players on the same host (no localhost hard-coding)
-    const playersRes = await fetch(`${origin}/api/players`, {
-      cache: "no-store",
-    });
-
-    if (!playersRes.ok) {
-      const txt = await playersRes.text().catch(() => "");
-      throw new Error(`/api/players failed (${playersRes.status}): ${txt}`);
-    }
-
-    const json = await playersRes.json();
-    const raw: any[] = json.data || [];
-
-    const allPlayers: Player[] = raw
+    const allPlayers: Player[] = rawPlayers
       .map((p) => ({
         id: String(p.id),
         name: p.name ?? "",
