@@ -1,9 +1,18 @@
 // src/app/api/players/route.ts
 import { NextResponse } from "next/server";
-import playersData from "@/data/players-2025-11-14-last5.json"; // 👈 note -last5
 import { getHeadshotUrl } from "@/lib/nbaHeadshots";
+import raw from "@/data/players-2025-11-14-last5.json";
 
-export interface PlayerOut {
+const DEFAULT_HEADSHOT =
+  "https://a.espncdn.com/i/headshots/nophoto.png";
+
+type Last5Game = {
+  date: string;
+  opp: string;
+  dk: number;
+};
+
+type PlayerJson = {
   id: string;
   name: string;
   position: string;
@@ -12,28 +21,36 @@ export interface PlayerOut {
   gameInfo: string;
   avgDK: number;
   efficiency: number;
-  image: string;
-  last5: { opp: string; dk: number }[];
-}
+  image?: string | null;
+  last5?: Last5Game[];
+};
+
+type Payload = {
+  count: number;
+  data: PlayerJson[];
+};
 
 export async function GET() {
-  try {
-    const players: PlayerOut[] = (playersData as any).data.map((p: any) => ({
+  const payload = raw as Payload;
+
+  const players = (payload.data || []).map((p) => {
+    const cleanName = (p.name || "").trim();
+
+    const headshot =
+      getHeadshotUrl(cleanName) ||
+      p.image ||
+      DEFAULT_HEADSHOT;
+
+    return {
       ...p,
-      image: getHeadshotUrl(p.name),
+      name: cleanName,
+      image: headshot,
       last5: p.last5 ?? [],
-    }));
+    };
+  });
 
-    players.sort((a, b) => b.efficiency - a.efficiency);
-
-    return NextResponse.json({
-      count: players.length,
-      data: players,
-    });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: "API failed", details: e.message },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    count: players.length,
+    data: players,
+  });
 }
