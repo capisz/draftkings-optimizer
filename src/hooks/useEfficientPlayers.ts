@@ -8,14 +8,25 @@ export interface EfficientPlayer extends PlayerOut {
   last5: Last5Game[];
 }
 
+export interface SlateInfo {
+  source: "live" | "demo";
+  draftGroupId: number | null;
+  gameType: "classic" | "showdown";
+  gameTypeName: string;
+  startDate: string | null;
+  label: string;
+}
+
 interface ApiResponse {
   count: number;
   data: PlayerOut[];
+  slate?: SlateInfo;
 }
 
 export function useEfficientPlayers() {
   const [efficientPlayers, setEfficientPlayers] = useState<EfficientPlayer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [slate, setSlate] = useState<SlateInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,7 +34,7 @@ export function useEfficientPlayers() {
 
     async function load() {
       try {
-        setLoading(true);
+        setIsLoading(true);
         setError(null);
 
         const res = await fetch("/api/players");
@@ -36,18 +47,18 @@ export function useEfficientPlayers() {
 
         const mapped: EfficientPlayer[] = json.data.map((p) => ({
           ...p,
-          // ensure last5 is always an array
           last5: p.last5 ?? [],
         }));
 
         setEfficientPlayers(mapped);
+        setSlate(json.slate ?? null);
       } catch (e: any) {
         if (!cancelled) {
           setError(e.message ?? "Failed to load players");
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setIsLoading(false);
         }
       }
     }
@@ -59,5 +70,5 @@ export function useEfficientPlayers() {
     };
   }, []);
 
-  return { efficientPlayers, loading, error };
+  return { efficientPlayers, slate, isLoading, error };
 }

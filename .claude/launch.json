@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dk-optimizer",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "-p", "3456"],
+      "port": 3456
+    }
+  ]
+}

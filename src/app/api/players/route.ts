@@ -1,56 +1,26 @@
 // src/app/api/players/route.ts
 import { NextResponse } from "next/server";
-import { getHeadshotUrl } from "@/lib/nbaHeadshots";
-import raw from "@/data/players-2025-11-14-last5.json";
+import { getPlayerPool } from "@/lib/draftkings";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export type { PoolPlayer as PlayerOut, Last5Game } from "@/lib/draftkings";
 
 const DEFAULT_HEADSHOT =
-  "https://a.espncdn.com/i/headshots/nophoto.png";
-
-type Last5Game = {
-  date: string;
-  opp: string;
-  dk: number;
-};
-
-type PlayerJson = {
-  id: string;
-  name: string;
-  position: string;
-  team: string;
-  salary: number;
-  gameInfo: string;
-  avgDK: number;
-  efficiency: number;
-  image?: string | null;
-  last5?: Last5Game[];
-};
-
-type Payload = {
-  count: number;
-  data: PlayerJson[];
-};
+  "https://upload.wikimedia.org/wikipedia/commons/5/59/User-avatar.svg";
 
 export async function GET() {
-  const payload = raw as Payload;
+  const { players, slate } = await getPlayerPool();
 
-  const players = (payload.data || []).map((p) => {
-    const cleanName = (p.name || "").trim();
-
-    const headshot =
-      getHeadshotUrl(cleanName) ||
-      p.image ||
-      DEFAULT_HEADSHOT;
-
-    return {
-      ...p,
-      name: cleanName,
-      image: headshot,
-      last5: p.last5 ?? [],
-    };
-  });
+  const data = players.map((p) => ({
+    ...p,
+    image: p.image || DEFAULT_HEADSHOT,
+  }));
 
   return NextResponse.json({
-    count: players.length,
-    data: players,
+    count: data.length,
+    data,
+    slate,
   });
 }

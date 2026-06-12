@@ -9,7 +9,7 @@ const DEFAULT_HEADSHOT =
 
 function buildNbaHeadshotUrl(id: number | string): string {
   // Official NBA.com headshot URL pattern
-  return `https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/${id}.png`;
+  return `https://cdn.nba.com/headshots/nba/latest/260x190/${id}.png`;
 }
 
 export function getHeadshotUrl(fullName: string | null | undefined): string {

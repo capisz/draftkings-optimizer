@@ -20,7 +20,10 @@ The goal isn’t to “solve” DFS, but to give you a fast, visual way to:
 
 ## ✨ Features
 
-- **CSV Upload:** Import the standard DraftKings player CSV for NBA contests.
+- **Live DraftKings Data:** Pulls the current NBA slate (salaries, FPPG, matchups, player photos) straight from DraftKings' public lobby/draftables endpoints — no CSV needed. Falls back to a bundled demo slate when no live slate is available.
+- **Classic & Showdown Support:** Builds 8-slot Classic lineups in season, and CPT + 5 UTIL Showdown lineups (with the 1.5× captain multiplier) for single-game slates like the Finals.
+- **Live Player Images:** Official DraftKings player photos, with NBA.com CDN headshots as a fallback.
+- **AI Analyst (Claude):** Highlight any lineup slots and ask the AI to find better picks from the live player pool — it respects position eligibility and the salary cap, explains each swap, and you apply them with one click.
 - **Player Ranking:** Compute a custom **efficiency score** that balances salary vs. fantasy production.
 - **Lineup Generation:** Build a recommended lineup that:
 - Respects DraftKings position rules
@@ -83,32 +86,24 @@ Your actual structure may vary a bit, but this is the general idea.
 
 ## 📎 Using the App
 
-### 1. Get the DraftKings CSV
+### 1. Open the app
 
-1. Go to **DraftKings → NBA → Classic** contest.
-2. On the contest page, click **Download Players List (CSV)**.
-3. Save the file to your computer, e.g. `DKSalaries.csv`.
+The current DraftKings NBA slate loads automatically — a **Live / Demo badge** at the top shows where the data came from and which contest type is active (Classic or Showdown).
 
-### 2. Load players into the app
+### 2. Generate a lineup
 
-1. Open the deployed app (Vercel) or your local dev server.
-2. Use the **Upload CSV** control to select your `DKSalaries.csv` file.
-3. The app parses the CSV and shows:
-- A list of players with salary and average DK points
-- An efficiency score for each player
-- Games/matchups across the slate
-
-### 3. Generate a lineup
-
-1. Click **Generate Lineup**.
+1. Click **Generate Team**.
 2. The app will:
-- Rank players by efficiency
-- Respect DraftKings roster slots (PG, SG, SF, PF, C, G, F, UTIL)
+- Rank players by a weighted projection/value score
+- Respect the slate's roster slots (PG, SG, SF, PF, C, G, F, UTIL for Classic; CPT + 5 UTIL for Showdown)
 - Keep the total salary at or under $50,000
-3. You’ll see:
-- A list of 8 recommended players
-- Total salary and approximate projection
-- Visual indicators for matchups/teams
+
+### 3. Improve it with the AI analyst
+
+1. Tap any lineup rows you're unsure about to highlight them.
+2. Optionally add a note ("more upside", "fade Knicks", "save salary").
+3. Click **Suggest better picks** — Claude scans the live pool and proposes cap-legal, position-legal swaps with reasoning and salary/projection deltas.
+4. Click **Apply** to accept the swaps.
 
 Use this as a **starting point**, then tweak manually inside DraftKings with your own strategy.
 
@@ -146,18 +141,19 @@ You should see the DraftKings optimizer UI.
 
 ---
 
-## ⚙️ Environment Variables (Optional)
+## ⚙️ Environment Variables
 
-By default, the app can run against **cached data** (e.g. `cache_players.json` or the uploaded CSV) so you can demo it without external APIs.
+Live DraftKings data works with **no configuration** — the app fetches the current slate server-side and falls back to bundled demo data if DraftKings is unreachable.
 
-If you connect a live stats or projections API, you might add environment variables like:
+The AI analyst needs an Anthropic API key. Create `.env.local`:
 
-RAPIDAPI_KEY=your_key_here
-API_BASE_URL=https://example-nba-endpoint.com
+```
+ANTHROPIC_API_KEY=sk-ant-...
+# optional, defaults to claude-opus-4-8
+ANTHROPIC_MODEL=claude-opus-4-8
+```
 
-and access them in Next.js via `process.env`.
-
-(Exact names depend on how you wire the API into your `utils` or API routes.)
+Without a key the rest of the app works normally; the AI button just reports that the analyst is offline.
 
 ---
 
