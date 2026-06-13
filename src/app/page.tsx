@@ -684,13 +684,13 @@ export default function Home() {
         <div className="mx-auto max-w-6xl mb-6 px-4 flex flex-col lg:flex-row gap-6 items-start">
         {/* TEAM CONVEYOR — auto-scrolls the optimizer's picks, pauses on hover */}
         {filledTeam.length > 0 && (
-          <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1">
-            <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-2">
+          <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1 bg-zinc-900 rounded-xl p-6 shadow-xl">
+            <div className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-1">
               Your Lineup
-              <span className="ml-2 text-zinc-500 normal-case font-normal">
-                auto-scrolling · hover to pause · tap a card for last 5 games
-              </span>
-            </h2>
+            </div>
+            <div className="text-[11px] text-zinc-500 mb-3">
+              auto-scrolling · hover to pause · tap a card for last 5 games
+            </div>
             <div className="dk-conveyor-viewport">
               <div className="dk-conveyor-track">
                 {/* duplicate the cards so the loop is seamless */}
@@ -1020,47 +1020,53 @@ export default function Home() {
         </div>
         )}
 
-        {/* POSITION FILTER + SEARCH */}
-        <div className="flex flex-col items-center mb-6 px-4">
-          <div className="bg-zinc-900/80 border border-lime-600/30 rounded-xl px-4 py-3 text-center shadow-md w-full max-w-md">
-            <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-3">
-              Filter Players
-            </h2>
-
-            <div className="flex flex-wrap justify-center gap-2 mb-3">
-              {["PG", "SG", "SF", "PF", "C"].map((pos) => (
-                <Button
-                  key={pos}
-                  onClick={() => setPosition(position === pos ? null : pos)}
-                  className={`px-4 py-2 rounded-full text-sm border transition-colors ${
-                    position === pos
-                      ? "bg-lime-500 border-lime-300 text-black font-semibold hover:bg-lime-400"
-                      : "bg-zinc-800 border-zinc-700 text-white hover:border-lime-600/50 hover:bg-zinc-700"
-                  }`}
-                >
-                  {pos}
-                </Button>
-              ))}
-            </div>
-
-            {/* SEARCH */}
-            <div className="mt-2 w-full max-w-md mx-auto">
-              <Input
-                placeholder="Search players..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-zinc-800 text-white border border-zinc-700 rounded-full px-4 focus:border-lime-500 focus:ring-lime-500"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* BLUR GRID WHEN LOADING */}
         <div
           className={`transition-all duration-300 ${
             teamLoading ? "blur-sm opacity-40" : "blur-0 opacity-100"
           }`}
         >
+          {/* PLAYER POOL TOOLBAR — filters for the grid below */}
+          <div className="px-6 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 border-b border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-semibold text-lime-400 uppercase tracking-wide mr-1">
+                  Player Pool
+                </span>
+                {["PG", "SG", "SF", "PF", "C"].map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => setPosition(position === pos ? null : pos)}
+                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                      position === pos
+                        ? "bg-lime-500 border-lime-300 text-black font-semibold hover:bg-lime-400"
+                        : "bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-lime-600/50 hover:bg-zinc-700"
+                    }`}
+                  >
+                    {pos}
+                  </button>
+                ))}
+                {position && (
+                  <button
+                    onClick={() => setPosition(null)}
+                    className="text-[11px] text-zinc-400 hover:text-zinc-200 underline underline-offset-2"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+
+              <div className="sm:ml-auto w-full sm:max-w-xs">
+                <Input
+                  placeholder="Search players..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-zinc-800 text-white border border-zinc-700 rounded-full px-4 h-9 focus:border-lime-500 focus:ring-lime-500"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* REPLACE-MODE HEADER ABOVE GRID */}
           {replaceTarget && (
             <div className="mx-auto max-w-2xl mb-3 px-6 text-center text-xs text-sky-300">
