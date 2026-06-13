@@ -11,6 +11,7 @@ export type Last5Game = {
   date: string;
   opp: string;
   dk: number;
+  min?: number;
 };
 
 export type PoolPlayer = {

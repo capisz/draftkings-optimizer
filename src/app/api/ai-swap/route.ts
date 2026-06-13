@@ -62,6 +62,19 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+function minutesTrend(p: PoolPlayer): string {
+  const mins = (p.last5 ?? [])
+    .map((g) => g.min)
+    .filter((m): m is number => typeof m === "number" && m > 0);
+  if (!mins.length) return "";
+  // last5 is newest-first; show oldest->newest so a rising role reads left-to-right
+  const chrono = [...mins].reverse();
+  const avg = chrono.reduce((s, m) => s + m, 0) / chrono.length;
+  const last = mins[0];
+  const arrow = last >= avg + 6 ? " ↑role" : last <= avg - 6 ? " ↓role" : "";
+  return ` | min ${chrono.map((m) => Math.round(m)).join("/")}${arrow}`;
+}
+
 function describePlayer(p: PoolPlayer): string {
   const status = p.status && p.status !== "None" ? ` [${p.status}]` : "";
   const form =
@@ -71,7 +84,7 @@ function describePlayer(p: PoolPlayer): string {
   const tentative = p.tentative
     ? ` | TENTATIVE (${p.tentativeReason ?? "unreliable usage"})`
     : "";
-  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} proj (L5) | ${p.fppg.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${form}${tentative}${status}`;
+  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} proj (L5) | ${p.fppg.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${form}${minutesTrend(p)}${tentative}${status}`;
 }
 
 export async function POST(req: Request) {
@@ -160,6 +173,8 @@ export async function POST(req: Request) {
       ...candidates.map(describePlayer),
       "",
       "Players marked TENTATIVE have unreliable recent usage — few or no recent games, a long layoff, or sporadic minutes — so their projections are shaky. Strongly prefer replacing a highlighted TENTATIVE player with a steadier option, and avoid recommending TENTATIVE candidates unless the budget forces a punt play (in that case say so in the reasoning).",
+      "",
+      "The 'min' values list each player's minutes over their recent games, oldest to newest. Use the TREND, not just the average: a player whose minutes are climbing (↑role) — e.g. a reserve who just played starter-level minutes — is likely to keep that role and is a strong forward-looking pick even if their season numbers are modest. A player whose minutes are falling (↓role) is risky. Call out minutes trends explicitly in your reasoning when they drive a recommendation.",
       "",
       "For each highlighted slot, suggest the best replacement from the candidate pool (or keep the current player by suggesting in_id equal to out_id if nothing beats them). Favor projection, but weigh value, reliability, injury status, and matchup. Keep reasoning to one or two sentences per swap.",
     ]

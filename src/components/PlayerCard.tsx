@@ -63,7 +63,7 @@ export function PlayerCard({
   const recentGames: GameStat[] | null =
     player.last5 && player.last5.length > 0
       ? player.last5.map((g) => ({
-          opponent: `${g.opp} · ${g.date.slice(5)}`,
+          opponent: `${g.opp}${g.min ? ` · ${Math.round(g.min)}m` : ""}`,
           dkPoints: g.dk,
         }))
       : null;

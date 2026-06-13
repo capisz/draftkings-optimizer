@@ -59,6 +59,7 @@ type BoxPlayerLine = {
   date: string;
   opp: string;
   dk: number;
+  min: number;
   ts: number;
 };
 
@@ -100,8 +101,12 @@ async function getCompletedGames(): Promise<ScheduleGame[]> {
 }
 
 function parseMinutes(min: string | undefined): number {
-  const m = (min || "").match(/PT(\d+)M/);
-  return m ? parseInt(m[1], 10) : 0;
+  // e.g. "PT41M28.00S" -> 41.47
+  const m = (min || "").match(/PT(\d+)M(?:([\d.]+)S)?/);
+  if (!m) return 0;
+  const mins = parseInt(m[1], 10);
+  const secs = m[2] ? parseFloat(m[2]) : 0;
+  return Number((mins + secs / 60).toFixed(1));
 }
 
 // Official DraftKings NBA Classic scoring
@@ -142,11 +147,13 @@ async function getBoxscoreLines(
     const opp = side === "homeTeam" ? `vs ${oppCode}` : `@ ${oppCode}`;
 
     for (const p of team?.players || []) {
-      if (parseMinutes(p?.statistics?.minutes) <= 0) continue;
+      const min = parseMinutes(p?.statistics?.minutes);
+      if (min <= 0) continue;
       lines.set(normalizeName(p?.name), {
         date,
         opp,
         dk: dkPoints(p?.statistics),
+        min,
         ts: game.ts,
       });
     }
@@ -212,7 +219,13 @@ export async function getLastFiveByPlayer(
   for (const lines of lineMaps) {
     for (const [name, line] of lines) {
       const list = result.get(name) ?? [];
-      list.push({ date: line.date, opp: line.opp, dk: line.dk, ts: line.ts });
+      list.push({
+        date: line.date,
+        opp: line.opp,
+        dk: line.dk,
+        min: line.min,
+        ts: line.ts,
+      });
       result.set(name, list);
     }
   }
@@ -222,7 +235,7 @@ export async function getLastFiveByPlayer(
     list.sort((a, b) => b.ts - a.ts);
     trimmed.set(
       name,
-      list.slice(0, 5).map(({ date, opp, dk }) => ({ date, opp, dk }))
+      list.slice(0, 5).map(({ date, opp, dk, min }) => ({ date, opp, dk, min }))
     );
   }
   return trimmed;

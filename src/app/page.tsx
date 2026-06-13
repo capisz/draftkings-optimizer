@@ -392,6 +392,102 @@ export default function Home() {
 
   const realSwaps = aiResult?.suggestions.filter((s) => !s.kept) ?? [];
 
+  // Roster slots for the current slate
+  const slots =
+    slate?.gameType === "showdown"
+      ? ["CPT", "UTIL", "UTIL", "UTIL", "UTIL", "UTIL"]
+      : ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+
+  // ----- MANUAL BUILD -----
+  const startManualBuild = () => {
+    const empty: LineupPlayer[] = slots.map((slot) => ({
+      // placeholder rows carry an empty id; filled when a player is chosen
+      id: "",
+      slot,
+      name: "",
+      position: "",
+      team: "",
+      salary: 0,
+      fppg: 0,
+      avgDK: 0,
+      efficiency: 0,
+      valueDelta: null,
+      tentative: false,
+      tentativeReason: null,
+      image: null,
+      gameInfo: "",
+      status: "",
+      last5: [],
+      baseSalary: 0,
+      baseAvgDK: 0,
+    }));
+    setTeam(empty);
+    setTeamMeta({
+      totalSalary: 0,
+      totalAvgDK: 0,
+      totalScore: 0,
+      salaryCap: 50000,
+    });
+    setSelectedKeys([]);
+    setAiResult(null);
+    setAiError(null);
+    setReplaceTarget(null);
+  };
+
+  // ----- REPLACE / ADD A PLAYER FROM THE GRID -----
+  const commitPlayerToSlot = (incoming: EfficientPlayer, target: LineupPlayer) => {
+    const cap = teamMeta?.salaryCap ?? 50000;
+    const placed = toSlotPlayer(incoming, target.slot);
+    const isEmpty = !target.id;
+
+    // budget check (rest of lineup is locked)
+    const others = team.filter((p) => p !== target);
+    const othersSalary = others.reduce((s, p) => s + p.salary, 0);
+    if (othersSalary + placed.salary > cap) return false;
+
+    const next = team.map((p) => (p === target ? placed : p));
+    setTeam(next);
+    setTeamMeta(lineupTotals(next, cap));
+    return true;
+  };
+
+  // user clicked a grid card while in replace mode
+  const handleGridSelect = (incoming: EfficientPlayer) => {
+    if (!replaceTarget) return;
+    const ok = commitPlayerToSlot(incoming, replaceTarget);
+    if (ok) {
+      setReplaceTarget(null);
+      setAiResult(null);
+    }
+  };
+
+  // ----- AI PICKS A REPLACEMENT FOR ONE SLOT -----
+  const aiReplaceSlot = async (p: LineupPlayer) => {
+    setSelectedKeys([lineupKey(p)]);
+    setReplaceTarget(null);
+    setAiNote("");
+    // give React a tick to commit selection, then run
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const res = await fetch("/api/ai-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineup: team, selectedKeys: [lineupKey(p)] }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "AI suggestion failed");
+      setAiResult(json as AiSwapResponse);
+    } catch (e: any) {
+      setAiError(e.message ?? "Unknown error");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const filledTeam = team.filter((p) => p.id);
+
   return (
     <>
       <style jsx global>{`
@@ -423,6 +519,36 @@ export default function Home() {
         }
         .dk-conveyor::-webkit-scrollbar-track {
           background: transparent;
+        }
+
+        /* Auto-scrolling team conveyor (left -> right, cyclic) */
+        @keyframes dk-conveyor-scroll {
+          0% {
+            transform: translateX(-50%);
+          }
+          100% {
+            transform: translateX(0);
+          }
+        }
+        .dk-conveyor-viewport {
+          overflow: hidden;
+          /* room so hover lift isn't clipped at the top */
+          padding-top: 10px;
+        }
+        .dk-conveyor-track {
+          display: flex;
+          gap: 1rem;
+          width: max-content;
+          animation: dk-conveyor-scroll 40s linear infinite;
+          will-change: transform;
+        }
+        .dk-conveyor-viewport:hover .dk-conveyor-track {
+          animation-play-state: paused;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .dk-conveyor-track {
+            animation: none;
+          }
         }
       `}</style>
 
@@ -531,36 +657,49 @@ export default function Home() {
         )}
 
         {/* TEAM GENERATOR – now under header */}
-        <div className="flex flex-col items-center mb-6 px-4 space-y-4">
-          <Button
-            onClick={generateTeam}
-            disabled={teamLoading}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-lime-600 px-6 py-2 text-sm font-semibold text-black shadow-md transition-all duration-150 hover:bg-lime-500 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
-          >
-            {teamLoading ? "Optimizing lineup…" : "Generate Team"}
-          </Button>
+        <div className="flex flex-col items-center mb-6 px-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={generateTeam}
+              disabled={teamLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-lime-600 px-6 py-2 text-sm font-semibold text-black shadow-md transition-all duration-150 hover:bg-lime-500 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
+            >
+              {teamLoading ? "Optimizing lineup…" : "Generate Team"}
+            </Button>
+
+            <Button
+              onClick={startManualBuild}
+              disabled={teamLoading}
+              className="inline-flex items-center justify-center rounded-full bg-zinc-800 border border-lime-600/40 px-5 py-2 text-sm font-semibold text-lime-300 shadow-md transition-all duration-150 hover:bg-zinc-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+            >
+              Build Manually
+            </Button>
+          </div>
 
           {teamError && <div className="text-red-400 text-sm">{teamError}</div>}
         </div>
 
-        {/* TEAM CONVEYOR — scroll through the optimizer's picks */}
-        {team.length > 0 && (
-          <div className="mx-auto max-w-4xl mb-6 px-4">
+        {/* TEAM CONVEYOR — auto-scrolls the optimizer's picks, pauses on hover */}
+        {filledTeam.length > 0 && (
+          <div className="mx-auto max-w-5xl mb-6 px-4">
             <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-2">
               Your Lineup
               <span className="ml-2 text-zinc-500 normal-case font-normal">
-                swipe to view each pick · tap a card for last 5 games
+                auto-scrolling · hover to pause · tap a card for last 5 games
               </span>
             </h2>
-            <div className="dk-conveyor flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-1 px-1">
-              {team.map((p) => (
-                <div
-                  key={`conveyor-${lineupKey(p)}`}
-                  className="w-60 shrink-0 snap-start"
-                >
-                  <PlayerCard player={p} slot={p.slot} />
-                </div>
-              ))}
+            <div className="dk-conveyor-viewport">
+              <div className="dk-conveyor-track">
+                {/* duplicate the cards so the loop is seamless */}
+                {[...filledTeam, ...filledTeam].map((p, i) => (
+                  <div
+                    key={`conveyor-${lineupKey(p)}-${i}`}
+                    className="w-60 shrink-0"
+                  >
+                    <PlayerCard player={p} slot={p.slot} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -573,27 +712,62 @@ export default function Home() {
               {salaryCap.toLocaleString()}
             </div>
             <div className="text-[11px] text-lime-300/80 mb-3">
-              Tap players to highlight them, then ask the AI analyst for
-              upgrades.
+              Highlight rows for a bulk AI pass, or use Swap / AI on any single
+              row to replace one player.
             </div>
 
             <div className="space-y-1 text-sm">
-              {team.map((p) => {
-                const key = lineupKey(p);
-                const isSelected = selectedKeys.includes(key);
+              {team.map((p, idx) => {
+                const key = `${p.slot}:${p.id || `empty${idx}`}`;
+                const isSelected = selectedKeys.includes(lineupKey(p));
+                const isReplaceTarget = replaceTarget === p;
+                const empty = !p.id;
+
+                if (empty) {
+                  return (
+                    <div
+                      key={key}
+                      onClick={() =>
+                        setReplaceTarget(isReplaceTarget ? null : p)
+                      }
+                      className={`flex justify-between items-center py-2 px-2 rounded-md cursor-pointer transition-colors border border-dashed ${
+                        isReplaceTarget
+                          ? "bg-sky-900/30 border-sky-500 text-white"
+                          : "border-zinc-700 text-zinc-400 hover:bg-zinc-800/60"
+                      }`}
+                    >
+                      <span className="text-left flex items-center gap-2">
+                        <span className="font-semibold text-lime-300 mr-2">
+                          {p.slot}
+                        </span>
+                        {isReplaceTarget
+                          ? "Pick a player below…"
+                          : "Empty — tap to add a player"}
+                      </span>
+                      <span className="text-sky-400 text-xs font-semibold">
+                        + Add
+                      </span>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={key}
-                    onClick={() => toggleSelected(p)}
-                    className={`flex justify-between items-center py-1 px-2 rounded-md cursor-pointer transition-colors border ${
-                      isSelected
-                        ? "bg-lime-900/40 border-lime-500 text-white"
-                        : "bg-transparent border-transparent border-b-zinc-700 text-gray-200 hover:bg-zinc-800/60"
+                    className={`flex justify-between items-center py-1 px-2 rounded-md transition-colors border ${
+                      isReplaceTarget
+                        ? "bg-sky-900/30 border-sky-500 text-white"
+                        : isSelected
+                          ? "bg-lime-900/40 border-lime-500 text-white"
+                          : "bg-transparent border-transparent border-b-zinc-700 text-gray-200 hover:bg-zinc-800/60"
                     }`}
                   >
-                    <span className="text-left flex items-center gap-2">
+                    <span
+                      onClick={() => toggleSelected(p)}
+                      className="text-left flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+                    >
                       <span
-                        className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center text-[9px] ${
+                        className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center text-[9px] shrink-0 ${
                           isSelected
                             ? "bg-lime-500 border-lime-400 text-black"
                             : "border-zinc-600"
@@ -601,7 +775,7 @@ export default function Home() {
                       >
                         {isSelected ? "✓" : ""}
                       </span>
-                      <span>
+                      <span className="truncate">
                         <span className="font-semibold text-lime-300 mr-2">
                           {p.slot}
                         </span>
@@ -609,21 +783,84 @@ export default function Home() {
                         <span className="text-xs text-zinc-400">
                           ({p.position}, {p.team})
                         </span>
+                        {p.tentative && (
+                          <span className="ml-1 text-amber-400" title={p.tentativeReason ?? "Tentative"}>
+                            ⚠
+                          </span>
+                        )}
                       </span>
                     </span>
 
-                    <span className="text-right text-xs tabular-nums">
-                      <span className="text-lime-400 mr-2">
-                        ${p.salary.toLocaleString()}
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="text-right text-xs tabular-nums">
+                        <span className="text-lime-400 mr-2">
+                          ${p.salary.toLocaleString()}
+                        </span>
+                        <span className="text-sky-400">
+                          {p.avgDK.toFixed(1)} DK
+                        </span>
                       </span>
-                      <span className="text-sky-400">
-                        {p.avgDK.toFixed(1)} DK
-                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedKeys([]);
+                          setAiResult(null);
+                          setReplaceTarget(isReplaceTarget ? null : p);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
+                          isReplaceTarget
+                            ? "bg-sky-600 border-sky-400 text-white"
+                            : "border-zinc-600 text-zinc-300 hover:border-sky-500 hover:text-sky-300"
+                        }`}
+                      >
+                        Swap
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          aiReplaceSlot(p);
+                        }}
+                        disabled={aiLoading}
+                        className="px-2 py-0.5 rounded text-[10px] font-semibold border border-zinc-600 text-zinc-300 hover:border-lime-500 hover:text-lime-300 transition-colors disabled:opacity-50"
+                      >
+                        ✨ AI
+                      </button>
                     </span>
                   </div>
                 );
               })}
             </div>
+
+            {/* REPLACE-MODE BANNER */}
+            {replaceTarget && (
+              <div className="mt-3 bg-sky-900/30 border border-sky-600/50 rounded-lg p-3 text-left text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sky-200">
+                    Choose a <span className="font-semibold">{replaceTarget.slot}</span>
+                    {replaceTarget.id ? ` to replace ${replaceTarget.name}` : ""} from
+                    the cards below — budget{" "}
+                    <span className="font-semibold tabular-nums">
+                      ${(replaceBudget ?? 0).toLocaleString()}
+                    </span>
+                    {slate?.gameType === "showdown" &&
+                      replaceTarget.slot === "CPT" &&
+                      " (CPT costs 1.5× salary)"}
+                  </span>
+                  <button
+                    onClick={() => setReplaceTarget(null)}
+                    className="px-2 py-0.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white shrink-0"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {filtered.length === 0 && (
+                  <div className="text-amber-300 mt-2">
+                    No eligible players fit this slot under the remaining cap.
+                    Free up salary by swapping a pricier slot first.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* TEAM META */}
             {teamMeta && (
@@ -821,10 +1058,36 @@ export default function Home() {
             teamLoading ? "blur-sm opacity-40" : "blur-0 opacity-100"
           }`}
         >
+          {/* REPLACE-MODE HEADER ABOVE GRID */}
+          {replaceTarget && (
+            <div className="mx-auto max-w-2xl mb-3 px-6 text-center text-xs text-sky-300">
+              Tap a card to put them in the{" "}
+              <span className="font-semibold">{replaceTarget.slot}</span> slot
+              {replaceTarget.id ? ` (replacing ${replaceTarget.name})` : ""}.
+            </div>
+          )}
+
           {/* PLAYER GRID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-6">
             {paged.map((p, i) => (
-              <PlayerCard key={p.id} player={p} isVisible={i < visibleCards} />
+              <PlayerCard
+                key={p.id}
+                player={p}
+                isVisible={i < visibleCards}
+                onSelect={
+                  replaceTarget ? () => handleGridSelect(p) : undefined
+                }
+                selectLabel={
+                  replaceTarget
+                    ? `→ ${replaceTarget.slot}${
+                        slate?.gameType === "showdown" &&
+                        replaceTarget.slot === "CPT"
+                          ? ` $${slotCost(p, "CPT").toLocaleString()}`
+                          : ""
+                      }`
+                    : undefined
+                }
+              />
             ))}
           </div>
 
