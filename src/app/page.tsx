@@ -139,7 +139,6 @@ export default function Home() {
 
   // AI agent state
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [aiNote, setAiNote] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<AiSwapResponse | null>(null);
@@ -342,44 +341,6 @@ export default function Home() {
     }
   };
 
-  const toggleSelected = (p: LineupPlayer) => {
-    const key = lineupKey(p);
-    setSelectedKeys((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-    setAiResult(null);
-    setAiError(null);
-  };
-
-  // AI SWAP API CALL
-  const askAi = async () => {
-    try {
-      setAiLoading(true);
-      setAiError(null);
-      setAiResult(null);
-
-      const res = await fetch("/api/ai-swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineup: team,
-          selectedKeys,
-          note: aiNote || undefined,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json?.error || "AI suggestion failed");
-      }
-
-      setAiResult(json as AiSwapResponse);
-    } catch (e: any) {
-      setAiError(e.message ?? "Unknown error");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const applyAiLineup = () => {
     if (!aiResult) return;
@@ -387,7 +348,6 @@ export default function Home() {
     setTeamMeta(aiResult.newTotals);
     setSelectedKeys([]);
     setAiResult(null);
-    setAiNote("");
   };
 
   const realSwaps = aiResult?.suggestions.filter((s) => !s.kept) ?? [];
@@ -465,8 +425,6 @@ export default function Home() {
   const aiReplaceSlot = async (p: LineupPlayer) => {
     setSelectedKeys([lineupKey(p)]);
     setReplaceTarget(null);
-    setAiNote("");
-    // give React a tick to commit selection, then run
     setAiLoading(true);
     setAiError(null);
     setAiResult(null);
@@ -679,12 +637,13 @@ export default function Home() {
           {teamError && <div className="text-red-400 text-sm">{teamError}</div>}
         </div>
 
-        {/* TEAM WORKSPACE — carousel + lineup list side by side on desktop */}
+        {/* TEAM WORKSPACE — lineup list + carousel together in one panel */}
         {team.length > 0 && (
-        <div className="mx-auto max-w-6xl mb-6 px-4 flex flex-col lg:flex-row gap-6 items-start">
+        <div className="mx-auto max-w-6xl mb-6 px-4">
+        <div className="bg-zinc-900 rounded-xl p-6 shadow-xl flex flex-col lg:flex-row gap-6 items-start">
         {/* TEAM CONVEYOR — auto-scrolls the optimizer's picks, pauses on hover */}
         {filledTeam.length > 0 && (
-          <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1 bg-zinc-900 rounded-xl p-6 shadow-xl">
+          <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1">
             <div className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-1">
               Your Lineup
             </div>
@@ -708,20 +667,19 @@ export default function Home() {
         )}
 
         {/* TEAM DISPLAY (lineup list) */}
-          <div className="bg-zinc-900 rounded-xl p-6 w-full lg:w-[26rem] lg:shrink-0 text-center shadow-xl order-1 lg:order-2">
+          <div className="w-full lg:w-[26rem] lg:shrink-0 text-center order-1 lg:order-2">
             <div className="text-xs text-zinc-400 mb-1">
               {team.map((p) => p.slot).join(", ")} — Salary cap: $
               {salaryCap.toLocaleString()}
             </div>
             <div className="text-[11px] text-lime-300/80 mb-3">
-              Highlight rows for a bulk AI pass, or use Swap / AI on any single
-              row to replace one player.
+              Use Swap to pick a replacement yourself, or AI to let the analyst
+              choose.
             </div>
 
             <div className="space-y-1 text-sm">
               {team.map((p, idx) => {
                 const key = `${p.slot}:${p.id || `empty${idx}`}`;
-                const isSelected = selectedKeys.includes(lineupKey(p));
                 const isReplaceTarget = replaceTarget === p;
                 const empty = !p.id;
 
@@ -759,24 +717,10 @@ export default function Home() {
                     className={`flex justify-between items-center py-1 px-2 rounded-md transition-colors border ${
                       isReplaceTarget
                         ? "bg-sky-900/30 border-sky-500 text-white"
-                        : isSelected
-                          ? "bg-lime-900/40 border-lime-500 text-white"
-                          : "bg-transparent border-transparent border-b-zinc-700 text-gray-200 hover:bg-zinc-800/60"
+                        : "bg-transparent border-transparent border-b-zinc-700 text-gray-200 hover:bg-zinc-800/60"
                     }`}
                   >
-                    <span
-                      onClick={() => toggleSelected(p)}
-                      className="text-left flex items-center gap-2 cursor-pointer flex-1 min-w-0"
-                    >
-                      <span
-                        className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center text-[9px] shrink-0 ${
-                          isSelected
-                            ? "bg-lime-500 border-lime-400 text-black"
-                            : "border-zinc-600"
-                        }`}
-                      >
-                        {isSelected ? "✓" : ""}
-                      </span>
+                    <span className="text-left flex items-center gap-2 flex-1 min-w-0">
                       <span className="truncate">
                         <span className="font-semibold text-lime-300 mr-2">
                           {p.slot}
@@ -825,7 +769,7 @@ export default function Home() {
                         disabled={aiLoading}
                         className="px-2 py-0.5 rounded text-[10px] font-semibold border border-zinc-600 text-zinc-300 hover:border-lime-500 hover:text-lime-300 transition-colors disabled:opacity-50"
                       >
-                        ✨ AI
+                        AI
                       </button>
                     </span>
                   </div>
@@ -884,35 +828,14 @@ export default function Home() {
               </div>
             )}
 
-            {/* AI ANALYST CONTROLS */}
-            {selectedKeys.length > 0 && (
-              <div className="mt-4 bg-zinc-800/70 rounded-lg p-4 text-left">
-                <div className="text-xs font-semibold text-lime-300 uppercase tracking-wide mb-2">
-                  AI Analyst — {selectedKeys.length} slot
-                  {selectedKeys.length > 1 ? "s" : ""} highlighted
-                </div>
-
-                <Input
-                  placeholder="Optional note for the AI (e.g. 'more upside', 'fade Knicks')…"
-                  value={aiNote}
-                  onChange={(e) => setAiNote(e.target.value)}
-                  className="bg-zinc-700 text-white border border-zinc-600 focus:border-lime-500 focus:ring-lime-500 mb-3"
-                />
-
-                <Button
-                  onClick={askAi}
-                  disabled={aiLoading}
-                  className="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold"
-                >
-                  {aiLoading
-                    ? "Asking the AI analyst…"
-                    : "✨ Suggest better picks"}
-                </Button>
-
-                {aiError && (
-                  <div className="text-red-400 text-xs mt-2">{aiError}</div>
-                )}
+            {/* AI STATUS / ERROR */}
+            {aiLoading && (
+              <div className="mt-4 text-xs text-sky-300">
+                Asking the AI analyst…
               </div>
+            )}
+            {aiError && (
+              <div className="mt-4 text-red-400 text-xs">{aiError}</div>
             )}
 
             {/* AI SUGGESTIONS */}
@@ -1018,6 +941,7 @@ export default function Home() {
             </Button>
           </div>
         </div>
+        </div>
         )}
 
         {/* BLUR GRID WHEN LOADING */}
@@ -1028,35 +952,33 @@ export default function Home() {
         >
           {/* PLAYER POOL TOOLBAR — filters for the grid below */}
           <div className="px-6 mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 border-b border-zinc-800 pb-4">
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-semibold text-lime-400 uppercase tracking-wide mr-1">
-                  Player Pool
-                </span>
-                {["PG", "SG", "SF", "PF", "C"].map((pos) => (
-                  <button
-                    key={pos}
-                    onClick={() => setPosition(position === pos ? null : pos)}
-                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                      position === pos
-                        ? "bg-lime-500 border-lime-300 text-black font-semibold hover:bg-lime-400"
-                        : "bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-lime-600/50 hover:bg-zinc-700"
-                    }`}
-                  >
-                    {pos}
-                  </button>
-                ))}
-                {position && (
-                  <button
-                    onClick={() => setPosition(null)}
-                    className="text-[11px] text-zinc-400 hover:text-zinc-200 underline underline-offset-2"
-                  >
-                    clear
-                  </button>
-                )}
-              </div>
+            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 pb-4">
+              <span className="text-xs font-semibold text-lime-400 uppercase tracking-wide mr-1">
+                Player Pool
+              </span>
+              {["PG", "SG", "SF", "PF", "C"].map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setPosition(position === pos ? null : pos)}
+                  className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                    position === pos
+                      ? "bg-lime-500 border-lime-300 text-black font-semibold hover:bg-lime-400"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-lime-600/50 hover:bg-zinc-700"
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+              {position && (
+                <button
+                  onClick={() => setPosition(null)}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-200 underline underline-offset-2"
+                >
+                  clear
+                </button>
+              )}
 
-              <div className="sm:ml-auto w-full sm:max-w-xs">
+              <div className="w-full sm:w-56 sm:ml-2">
                 <Input
                   placeholder="Search players..."
                   value={searchTerm}
