@@ -679,9 +679,12 @@ export default function Home() {
           {teamError && <div className="text-red-400 text-sm">{teamError}</div>}
         </div>
 
+        {/* TEAM WORKSPACE — carousel + lineup list side by side on desktop */}
+        {team.length > 0 && (
+        <div className="mx-auto max-w-6xl mb-6 px-4 flex flex-col lg:flex-row gap-6 items-start">
         {/* TEAM CONVEYOR — auto-scrolls the optimizer's picks, pauses on hover */}
         {filledTeam.length > 0 && (
-          <div className="mx-auto max-w-5xl mb-6 px-4">
+          <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1">
             <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-2">
               Your Lineup
               <span className="ml-2 text-zinc-500 normal-case font-normal">
@@ -704,9 +707,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* TEAM DISPLAY */}
-        {team.length > 0 && (
-          <div className="bg-zinc-900 rounded-xl p-6 mx-auto max-w-2xl text-center mb-6 shadow-xl">
+        {/* TEAM DISPLAY (lineup list) */}
+          <div className="bg-zinc-900 rounded-xl p-6 w-full lg:w-[26rem] lg:shrink-0 text-center shadow-xl order-1 lg:order-2">
             <div className="text-xs text-zinc-400 mb-1">
               {team.map((p) => p.slot).join(", ")} — Salary cap: $
               {salaryCap.toLocaleString()}
@@ -1015,6 +1017,7 @@ export default function Home() {
               Clear
             </Button>
           </div>
+        </div>
         )}
 
         {/* POSITION FILTER + SEARCH */}
