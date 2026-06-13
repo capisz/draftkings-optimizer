@@ -67,6 +67,12 @@ export function weightedScore(p: { avgDK: number; efficiency: number }): number 
   return p.avgDK * 0.7 + p.efficiency * 0.3;
 }
 
+// Selection score: tentative players (sparse/stale/sporadic recent usage)
+// are down-weighted so steadier options win close calls
+export function selectionScore(p: PoolPlayer): number {
+  return weightedScore(p) * (p.tentative ? 0.8 : 1);
+}
+
 export function asLineupPlayer(p: PoolPlayer, slot: string): LineupPlayer {
   const isCpt = slot === "CPT";
   return {
@@ -99,7 +105,7 @@ function totalsOf(lineup: LineupPlayer[]): LineupResult {
 
 function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
   const ranked = players
-    .map((p) => ({ ...p, _score: weightedScore(p) }))
+    .map((p) => ({ ...p, _score: selectionScore(p) }))
     .sort((a, b) => b._score - a._score);
 
   const pool = ranked.slice(0, 60);
@@ -165,7 +171,7 @@ function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
 function buildShowdown(players: PoolPlayer[]): LineupPlayer[] | null {
   const ranked = players
     .filter((p) => p.salary > 0 && p.avgDK > 0)
-    .map((p) => ({ ...p, _score: weightedScore(p) }))
+    .map((p) => ({ ...p, _score: selectionScore(p) }))
     .sort((a, b) => b._score - a._score);
 
   const cptCandidates = ranked.slice(0, 12);

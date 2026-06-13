@@ -10,8 +10,8 @@ import {
   SALARY_CAP,
   asLineupPlayer,
   canPlay,
+  selectionScore,
   totalsOf,
-  weightedScore,
   type LineupPlayer,
 } from "@/lib/optimizer";
 
@@ -68,7 +68,10 @@ function describePlayer(p: PoolPlayer): string {
     p.valueDelta !== null
       ? ` | form vs price ${p.valueDelta > 0 ? "+" : ""}${p.valueDelta.toFixed(1)}`
       : "";
-  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} proj (L5) | ${p.fppg.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${form}${status}`;
+  const tentative = p.tentative
+    ? ` | TENTATIVE (${p.tentativeReason ?? "unreliable usage"})`
+    : "";
+  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} proj (L5) | ${p.fppg.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${form}${tentative}${status}`;
 }
 
 export async function POST(req: Request) {
@@ -124,7 +127,7 @@ export async function POST(req: Request) {
     // Compact candidate pool: best 90 available players not already rostered
     const candidates = players
       .filter((p) => !lineupIds.has(p.id) && p.salary > 0 && p.avgDK > 0)
-      .sort((a, b) => weightedScore(b) - weightedScore(a))
+      .sort((a, b) => selectionScore(b) - selectionScore(a))
       .slice(0, 90);
 
     const cptNote =
@@ -139,6 +142,10 @@ export async function POST(req: Request) {
       ...lineup.map(
         (p) =>
           `${p.slot} | ${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)}${
+            p.tentative
+              ? ` | TENTATIVE (${p.tentativeReason ?? "unreliable usage"})`
+              : ""
+          }${
             selected.some((s) => s.slot === p.slot && s.id === p.id)
               ? "  <<< HIGHLIGHTED — replace if a better option exists"
               : ""
@@ -152,7 +159,9 @@ export async function POST(req: Request) {
       "CANDIDATE POOL (id | name | pos | team | base salary | FPPG | value | status):",
       ...candidates.map(describePlayer),
       "",
-      "For each highlighted slot, suggest the best replacement from the candidate pool (or keep the current player by suggesting in_id equal to out_id if nothing beats them). Favor projection, but weigh value, injury status, and matchup. Keep reasoning to one or two sentences per swap.",
+      "Players marked TENTATIVE have unreliable recent usage — few or no recent games, a long layoff, or sporadic minutes — so their projections are shaky. Strongly prefer replacing a highlighted TENTATIVE player with a steadier option, and avoid recommending TENTATIVE candidates unless the budget forces a punt play (in that case say so in the reasoning).",
+      "",
+      "For each highlighted slot, suggest the best replacement from the candidate pool (or keep the current player by suggesting in_id equal to out_id if nothing beats them). Favor projection, but weigh value, reliability, injury status, and matchup. Keep reasoning to one or two sentences per swap.",
     ]
       .filter(Boolean)
       .join("\n");

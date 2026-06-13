@@ -15,6 +15,9 @@ interface PlayerCardProps {
   isVisible?: boolean;
   // optional roster slot badge (used in the team conveyor)
   slot?: string;
+  // replace mode: clicking the card selects it instead of flipping
+  onSelect?: () => void;
+  selectLabel?: string;
 }
 
 export function ValueChip({ delta }: { delta: number | null | undefined }) {
@@ -40,10 +43,21 @@ export function ValueChip({ delta }: { delta: number | null | undefined }) {
   );
 }
 
-export function PlayerCard({ player, slot }: PlayerCardProps) {
+export function PlayerCard({
+  player,
+  slot,
+  onSelect,
+  selectLabel,
+}: PlayerCardProps) {
   const [showBack, setShowBack] = useState(false);
 
-  const handleToggle = () => setShowBack((prev) => !prev);
+  const handleToggle = () => {
+    if (onSelect) {
+      onSelect();
+      return;
+    }
+    setShowBack((prev) => !prev);
+  };
 
   // Map API last5 -> GameStat shape expected by PlayerCardBack
   const recentGames: GameStat[] | null =
@@ -60,9 +74,18 @@ export function PlayerCard({ player, slot }: PlayerCardProps) {
 
   return (
     <div
-      className="h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-lime-500/40"
+      className={`h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer border shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 relative ${
+        onSelect
+          ? "border-sky-500/60 hover:border-sky-400 ring-1 ring-sky-500/30"
+          : "border-zinc-800/80 hover:border-lime-500/40"
+      }`}
       onClick={handleToggle}
     >
+      {onSelect && (
+        <span className="absolute top-2 right-3 px-2 py-0.5 rounded-full bg-sky-600 text-white text-[9px] font-bold uppercase tracking-wide">
+          {selectLabel ?? "Tap to add"}
+        </span>
+      )}
       {/* HEADER */}
       <div className="flex items-center gap-4 mb-3">
         <div className="relative shrink-0">
@@ -97,9 +120,18 @@ export function PlayerCard({ player, slot }: PlayerCardProps) {
         </div>
       </div>
 
-      {/* VALUE SIGNAL */}
-      <div className="mb-1">
+      {/* VALUE + RELIABILITY SIGNALS */}
+      <div className="mb-1 flex flex-wrap gap-1.5">
         <ValueChip delta={player.valueDelta} />
+        {player.tentative && (
+          <span
+            title={player.tentativeReason ?? "Unreliable recent usage"}
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-900/50 text-amber-300"
+          >
+            ⚠ Tentative
+            {player.tentativeReason ? ` — ${player.tentativeReason}` : ""}
+          </span>
+        )}
       </div>
 
       {/* BODY: SUMMARY vs LAST-5 */}

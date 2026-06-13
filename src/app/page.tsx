@@ -82,6 +82,47 @@ function parseGameInfoToDate(gi: string): Date | null {
 
 const lineupKey = (p: LineupPlayer) => `${p.slot}:${p.id}`;
 
+// DraftKings slot eligibility (mirrors the server-side optimizer)
+function canPlaySlot(posStr: string, slot: string): boolean {
+  const parts = (posStr || "")
+    .split(/[\/,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (slot === "UTIL" || slot === "CPT") return parts.length > 0;
+  if (slot === "G") return parts.includes("PG") || parts.includes("SG");
+  if (slot === "F") return parts.includes("SF") || parts.includes("PF");
+  return parts.includes(slot);
+}
+
+// Cost/points of a player in a given slot (CPT runs at 1.5x)
+function toSlotPlayer(p: EfficientPlayer, slot: string): LineupPlayer {
+  const isCpt = slot === "CPT";
+  return {
+    ...p,
+    slot,
+    baseSalary: p.salary,
+    baseAvgDK: p.avgDK,
+    salary: isCpt ? Math.round(p.salary * 1.5) : p.salary,
+    avgDK: isCpt ? Number((p.avgDK * 1.5).toFixed(2)) : p.avgDK,
+  };
+}
+
+function slotCost(p: EfficientPlayer, slot: string): number {
+  return slot === "CPT" ? Math.round(p.salary * 1.5) : p.salary;
+}
+
+function lineupTotals(lineup: LineupPlayer[], salaryCap: number): LineupTotals {
+  return {
+    totalSalary: lineup.reduce((s, p) => s + p.salary, 0),
+    totalAvgDK: lineup.reduce((s, p) => s + p.avgDK, 0),
+    totalScore: lineup.reduce(
+      (s, p) => s + p.avgDK * 0.7 + p.efficiency * 0.3,
+      0
+    ),
+    salaryCap,
+  };
+}
+
 export default function Home() {
   const { efficientPlayers, slate, isLoading, error } = useEfficientPlayers();
 
@@ -102,6 +143,9 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<AiSwapResponse | null>(null);
+
+  // manual replace mode: which lineup spot is being replaced
+  const [replaceTarget, setReplaceTarget] = useState<LineupPlayer | null>(null);
 
   // progress bar state
   const [progress, setProgress] = useState(0);
@@ -126,12 +170,27 @@ export default function Home() {
     return () => clearInterval(id);
   }, [teamLoading]);
 
+  // Budget available for the slot being replaced (rest of lineup is locked)
+  const currentSalary = team.reduce((s, p) => s + p.salary, 0);
+  const replaceBudget = replaceTarget
+    ? (teamMeta?.salaryCap ?? 50000) - (currentSalary - replaceTarget.salary)
+    : null;
+
   // FILTERED LIST
   const filtered = efficientPlayers
     .filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
     .filter((p) =>
       !position ? true : p.position.split(/[\/,]/).includes(position)
-    );
+    )
+    // replace mode: only slot-eligible, cap-fitting players not already rostered
+    .filter((p) => {
+      if (!replaceTarget) return true;
+      if (team.some((t) => t.id === p.id && t.id !== replaceTarget.id))
+        return false;
+      if (p.id === replaceTarget.id) return false;
+      if (!canPlaySlot(p.position, replaceTarget.slot)) return false;
+      return slotCost(p, replaceTarget.slot) <= (replaceBudget ?? 0);
+    });
 
   const paged = filtered.slice(0, pageCount * PAGE_SIZE);
   const hasMore = filtered.length > paged.length;

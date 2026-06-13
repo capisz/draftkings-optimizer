@@ -27,6 +27,10 @@ export type PoolPlayer = {
   efficiency: number;
   // Recent form minus FPPG: positive = outperforming the price, undervalued
   valueDelta: number | null;
+  // Unreliable recent usage: few/no recent games, long layoff, or sporadic
+  // minutes. The optimizer down-weights these and the AI is told about them.
+  tentative: boolean;
+  tentativeReason: string | null;
   image: string | null;
   gameInfo: string;
   status: string;
@@ -133,6 +137,53 @@ async function enrichWithRecentForm(players: PoolPlayer[]): Promise<void> {
   for (const p of players) {
     const last5 = logs.get(normalizeName(p.name));
     if (last5?.length) applyRecentForm(p, last5);
+  }
+  applyReliability(players);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Flag players whose recent usage makes their projection shaky: no/few
+// recent games, a long layoff, or sporadic minutes. Measured against the
+// most recent game date in the pool so it also works on old demo data.
+export function applyReliability(players: PoolPlayer[]): void {
+  const allDates = players.flatMap((p) =>
+    p.last5.map((g) => Date.parse(g.date)).filter(Number.isFinite)
+  );
+  if (!allDates.length) return;
+  const poolLatest = Math.max(...allDates);
+
+  for (const p of players) {
+    const n = p.last5.length;
+
+    if (n === 0) {
+      p.tentative = true;
+      p.tentativeReason = "no recent game data";
+      continue;
+    }
+
+    const dates = p.last5
+      .map((g) => Date.parse(g.date))
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    const newest = dates[dates.length - 1];
+    const oldest = dates[0];
+    const daysSinceLast = Math.round((poolLatest - newest) / DAY_MS);
+    const avgGapDays = n >= 2 ? (newest - oldest) / DAY_MS / (n - 1) : 0;
+
+    if (daysSinceLast > 10) {
+      p.tentative = true;
+      p.tentativeReason = `hasn't played in ${daysSinceLast} days`;
+    } else if (n < 3) {
+      p.tentative = true;
+      p.tentativeReason = `only ${n} recent game${n > 1 ? "s" : ""}`;
+    } else if (avgGapDays > 5.5) {
+      p.tentative = true;
+      p.tentativeReason = "in and out of the lineup";
+    } else {
+      p.tentative = false;
+      p.tentativeReason = null;
+    }
   }
 }
 
@@ -244,6 +295,8 @@ function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
       fppg,
       efficiency: efficiencyOf(fppg, salary),
       valueDelta: null,
+      tentative: false,
+      tentativeReason: null,
       image:
         d.playerImage160 ||
         d.playerImage50 ||
@@ -286,6 +339,8 @@ function demoPool(): PlayerPool {
       fppg: Number(p.avgDK) || 0,
       efficiency: Number(p.efficiency) || 0,
       valueDelta: null,
+      tentative: false,
+      tentativeReason: null,
       image: getHeadshotUrl(name),
       gameInfo: p.gameInfo ?? "",
       status: "",
@@ -294,6 +349,7 @@ function demoPool(): PlayerPool {
     applyRecentForm(player, player.last5);
     return player;
   });
+  applyReliability(players);
 
   return {
     players,
