@@ -64,7 +64,11 @@ const RESPONSE_SCHEMA = {
 
 function describePlayer(p: PoolPlayer): string {
   const status = p.status && p.status !== "None" ? ` [${p.status}]` : "";
-  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${status}`;
+  const form =
+    p.valueDelta !== null
+      ? ` | form vs price ${p.valueDelta > 0 ? "+" : ""}${p.valueDelta.toFixed(1)}`
+      : "";
+  return `${p.id} | ${p.name} | ${p.position} | ${p.team} | $${p.salary} | ${p.avgDK.toFixed(1)} proj (L5) | ${p.fppg.toFixed(1)} FPPG | ${p.efficiency.toFixed(2)} val${form}${status}`;
 }
 
 export async function POST(req: Request) {

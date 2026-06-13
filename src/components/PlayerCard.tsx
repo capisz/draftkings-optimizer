@@ -13,9 +13,34 @@ interface PlayerCardProps {
   player: EfficientPlayer;
   // page.tsx can still pass isVisible, we just don't need it right now
   isVisible?: boolean;
+  // optional roster slot badge (used in the team conveyor)
+  slot?: string;
 }
 
-export function PlayerCard({ player }: PlayerCardProps) {
+export function ValueChip({ delta }: { delta: number | null | undefined }) {
+  if (delta === null || delta === undefined) return null;
+
+  const hot = delta >= 3;
+  const cold = delta <= -3;
+  const label = `${delta > 0 ? "▲ +" : delta < 0 ? "▼ −" : "•"}${Math.abs(delta).toFixed(1)} vs price`;
+
+  return (
+    <span
+      title="Last-5-game DK average minus season FPPG (DraftKings' pricing basis)"
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums ${
+        hot
+          ? "bg-lime-900/60 text-lime-300"
+          : cold
+            ? "bg-red-900/50 text-red-300"
+            : "bg-zinc-800 text-zinc-400"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+export function PlayerCard({ player, slot }: PlayerCardProps) {
   const [showBack, setShowBack] = useState(false);
 
   const handleToggle = () => setShowBack((prev) => !prev);
@@ -24,84 +49,108 @@ export function PlayerCard({ player }: PlayerCardProps) {
   const recentGames: GameStat[] | null =
     player.last5 && player.last5.length > 0
       ? player.last5.map((g) => ({
-          opponent: g.opp,
+          opponent: `${g.opp} · ${g.date.slice(5)}`,
           dkPoints: g.dk,
         }))
       : null;
 
   const src = player.image || FALLBACK_AVATAR;
+  const status =
+    player.status && player.status !== "None" ? player.status : null;
 
   return (
     <div
-      className="h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:-translate-y-1"
+      className="h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 hover:border-lime-500/40"
       onClick={handleToggle}
     >
       {/* HEADER */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="h-16 w-16 rounded-full border-2 border-lime-400 bg-neutral-900 flex items-center justify-center overflow-hidden shrink-0">
-          <img
-            src={src}
-            alt={player.name}
-            className="h-full w-full object-cover"
-          />
+      <div className="flex items-center gap-4 mb-3">
+        <div className="relative shrink-0">
+          <div className="h-16 w-16 rounded-full border-2 border-lime-400 bg-neutral-900 flex items-center justify-center overflow-hidden">
+            <img
+              src={src}
+              alt={player.name}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          {slot && (
+            <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-lime-500 text-black text-[9px] font-bold">
+              {slot}
+            </span>
+          )}
         </div>
-        <div className="flex flex-col">
-          <span className="font-semibold text-white leading-tight">
+        <div className="flex flex-col min-w-0">
+          <span className="font-semibold text-white leading-tight truncate">
             {player.name}
           </span>
           <span className="text-sm text-neutral-400">
             {player.team} · {player.position}
+            {status && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px] font-semibold uppercase align-middle">
+                {status}
+              </span>
+            )}
           </span>
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-neutral-500 truncate">
             {player.gameInfo}
           </span>
         </div>
+      </div>
+
+      {/* VALUE SIGNAL */}
+      <div className="mb-1">
+        <ValueChip delta={player.valueDelta} />
       </div>
 
       {/* BODY: SUMMARY vs LAST-5 */}
       {!showBack ? (
         // FRONT / SUMMARY VIEW
         <>
-          <div className="flex justify-between text-sm text-neutral-200 mt-2 flex-1">
+          <div className="flex justify-between text-sm text-neutral-200 mt-1 flex-1">
             <div className="space-y-2">
               <div>
                 <span className="text-xs text-neutral-400">Salary</span>
-                <div className="font-semibold text-lime-400">
+                <div className="font-semibold text-lime-400 tabular-nums">
                   ${player.salary.toLocaleString()}
                 </div>
               </div>
               <div>
-                <span className="text-xs text-neutral-400">Efficiency</span>
-                <div className="font-semibold">
-                  {player.efficiency.toFixed(2)}
+                <span className="text-xs text-neutral-400">Season FPPG</span>
+                <div className="font-semibold tabular-nums">
+                  {(player.fppg ?? player.avgDK).toFixed(1)}
                 </div>
               </div>
             </div>
 
             <div className="space-y-2 text-right">
               <div>
-                <span className="text-xs text-neutral-400">Avg DKFP</span>
-                <div className="font-semibold text-sky-400">
+                <span className="text-xs text-neutral-400">
+                  {player.last5?.length >= 2 ? "Last-5 Form" : "Avg DKFP"}
+                </span>
+                <div className="font-semibold text-sky-400 tabular-nums">
                   {player.avgDK.toFixed(1)}
                 </div>
               </div>
-              <div className="text-xs text-neutral-500 mt-4">
-                Click to flip for last 5 games
+              <div>
+                <span className="text-xs text-neutral-400">Value / $1K</span>
+                <div className="font-semibold tabular-nums">
+                  {player.efficiency.toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 text-[10px] text-neutral-600 text-center">
-            Contest-only · Live salaries from DraftKings CSV
+          <div className="mt-3 text-[10px] text-neutral-600 text-center">
+            Click to flip for last 5 games
           </div>
         </>
       ) : (
         // BACK VIEW
-       <PlayerCardBack
-  color="#191b20"   // grey, matches app theme
-  player={player}
-  recentGames={recentGames}
-      />
+        <PlayerCardBack
+          color="#191b20" // grey, matches app theme
+          player={player}
+          recentGames={recentGames}
+        />
       )}
     </div>
   );

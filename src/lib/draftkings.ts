@@ -5,6 +5,7 @@
 
 import demoData from "@/data/players-2025-11-14-last5.json";
 import { getHeadshotUrl } from "@/lib/nbaHeadshots";
+import { getLastFiveByPlayer, normalizeName } from "@/lib/nbaGameLogs";
 
 export type Last5Game = {
   date: string;
@@ -18,8 +19,14 @@ export type PoolPlayer = {
   position: string;
   team: string;
   salary: number;
+  // Projection used by the optimizer: last-5-game DK average when we have
+  // recent logs, otherwise DraftKings' season FPPG
   avgDK: number;
+  // DraftKings' season-long FPPG (their pricing basis)
+  fppg: number;
   efficiency: number;
+  // Recent form minus FPPG: positive = outperforming the price, undervalued
+  valueDelta: number | null;
   image: string | null;
   gameInfo: string;
   status: string;
@@ -103,6 +110,32 @@ function efficiencyOf(avgDK: number, salary: number): number {
   return Number((avgDK / (salary / 1000)).toFixed(2));
 }
 
+// The core of the value model: when we have recent game logs, the player's
+// projection becomes their last-5 DK average instead of season FPPG, so a
+// player whose recent form outruns their (FPPG-based) salary scores as
+// undervalued and rises in the optimizer.
+function applyRecentForm(player: PoolPlayer, last5: Last5Game[]): void {
+  player.last5 = last5;
+  if (last5.length < 2) return; // one game is noise, not form
+
+  const recentAvg = Number(
+    (last5.reduce((s, g) => s + g.dk, 0) / last5.length).toFixed(2)
+  );
+  player.avgDK = recentAvg;
+  player.efficiency = efficiencyOf(recentAvg, player.salary);
+  player.valueDelta = player.fppg
+    ? Number((recentAvg - player.fppg).toFixed(1))
+    : null;
+}
+
+async function enrichWithRecentForm(players: PoolPlayer[]): Promise<void> {
+  const logs = await getLastFiveByPlayer(players.map((p) => p.team));
+  for (const p of players) {
+    const last5 = logs.get(normalizeName(p.name));
+    if (last5?.length) applyRecentForm(p, last5);
+  }
+}
+
 async function fetchJson(url: string): Promise<any> {
   const res = await fetch(url, {
     headers: DK_HEADERS,
@@ -123,10 +156,12 @@ type DraftGroupChoice = {
 
 // WNBA games share the NBA lobby (and the Showdown contest type), so the only
 // way to tell leagues apart is the team abbreviations in the group suffix.
+// Includes DK alias codes (PHO, BRK, …) alongside NBA.com tricodes.
 const NBA_TEAMS = new Set([
   "ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DAL", "DEN", "DET", "GSW",
   "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NOP", "NYK",
   "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SAS", "TOR", "UTA", "WAS",
+  "PHO", "BRK", "GS", "NO", "NY", "SA", "UTAH", "WSH",
 ]);
 
 function isNbaGroup(g: DraftGroupChoice): boolean {
@@ -194,7 +229,7 @@ function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
   const players: PoolPlayer[] = [];
   for (const d of byPlayer.values()) {
     const salary = Number(d.salary) || 0;
-    const avgDK = parseFppg(d.draftStatAttributes);
+    const fppg = parseFppg(d.draftStatAttributes);
     const comp = competitions.get(d?.competition?.competitionId);
     const startTime = comp?.startTime ?? d?.competition?.startTime ?? null;
     const compName = d?.competition?.name ?? "";
@@ -205,8 +240,10 @@ function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
       position: d.position ?? "",
       team: d.teamAbbreviation ?? "",
       salary,
-      avgDK,
-      efficiency: efficiencyOf(avgDK, salary),
+      avgDK: fppg,
+      fppg,
+      efficiency: efficiencyOf(fppg, salary),
+      valueDelta: null,
       image:
         d.playerImage160 ||
         d.playerImage50 ||
@@ -239,19 +276,23 @@ function demoPool(): PlayerPool {
   const payload = demoData as { count: number; data: any[] };
   const players: PoolPlayer[] = (payload.data || []).map((p) => {
     const name = (p.name || "").trim();
-    return {
+    const player: PoolPlayer = {
       id: String(p.id),
       name,
       position: p.position ?? "",
       team: p.team ?? "",
       salary: Number(p.salary) || 0,
       avgDK: Number(p.avgDK) || 0,
+      fppg: Number(p.avgDK) || 0,
       efficiency: Number(p.efficiency) || 0,
+      valueDelta: null,
       image: getHeadshotUrl(name),
       gameInfo: p.gameInfo ?? "",
       status: "",
       last5: p.last5 ?? [],
     };
+    applyRecentForm(player, player.last5);
+    return player;
   });
 
   return {
@@ -280,6 +321,13 @@ export async function getPlayerPool(): Promise<PlayerPool> {
     const draftables = await fetchJson(DRAFTABLES_URL(group.draftGroupId));
     const pool = mapDraftables(draftables, group);
     if (!pool.players.length) throw new Error("Slate returned no players");
+
+    // Recent form is an enhancement — never let it break live data
+    try {
+      await enrichWithRecentForm(pool.players);
+    } catch (err) {
+      console.error("[draftkings] recent-form enrichment failed:", err);
+    }
 
     cached = { pool, at: Date.now() };
     return pool;

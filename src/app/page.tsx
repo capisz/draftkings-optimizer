@@ -351,11 +351,62 @@ export default function Home() {
           animation: dk-marquee 30s linear infinite;
           will-change: transform;
         }
+        .dk-conveyor {
+          scrollbar-width: thin;
+          scrollbar-color: #65a30d transparent;
+        }
+        .dk-conveyor::-webkit-scrollbar {
+          height: 6px;
+        }
+        .dk-conveyor::-webkit-scrollbar-thumb {
+          background: #3f6212;
+          border-radius: 9999px;
+        }
+        .dk-conveyor::-webkit-scrollbar-track {
+          background: transparent;
+        }
       `}</style>
 
-      <div className="min-h-screen text-white bg-gradient-to-b from-zinc-800 via-zinc-900 to-black py-8 relative">
+      <div className="min-h-screen text-white bg-gradient-to-b from-zinc-800 via-zinc-900 to-black pb-8 relative">
         {/* FULL-SCREEN LOADING OVERLAY */}
         {teamLoading && <LoadingOverlay progress={progress} />}
+
+        {/* APP HEADER */}
+        <header className="sticky top-0 z-40 backdrop-blur-md bg-zinc-950/70 border-b border-zinc-800/80 mb-6">
+          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/dk-crown.png"
+                alt="DraftKings Crown"
+                width={28}
+                height={28}
+                className="opacity-90"
+              />
+              <h1 className="text-lg font-bold tracking-tight">
+                Lineup<span className="text-lime-400">Optimizer</span>
+              </h1>
+            </div>
+            {slate && (
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 ${
+                  slate.source === "live"
+                    ? "bg-lime-900/60 text-lime-300"
+                    : "bg-amber-900/60 text-amber-300"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    slate.source === "live"
+                      ? "bg-lime-400 animate-pulse"
+                      : "bg-amber-400"
+                  }`}
+                />
+                {slate.source === "live" ? "Live" : "Demo"} ·{" "}
+                {slate.gameType === "showdown" ? "Showdown" : "Classic"}
+              </span>
+            )}
+          </div>
+        </header>
 
         {/* TODAY'S MATCHUPS HEADER – main header */}
         {matchups.length > 0 && (
@@ -368,29 +419,10 @@ export default function Home() {
                     Today&apos;s Matchups
                   </h2>
 
-                  {/* SLATE SOURCE BADGE */}
+                  {/* SLATE SOURCE */}
                   {slate && (
-                    <div className="mb-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
-                          slate.source === "live"
-                            ? "bg-lime-900/60 text-lime-300"
-                            : "bg-amber-900/60 text-amber-300"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            slate.source === "live"
-                              ? "bg-lime-400 animate-pulse"
-                              : "bg-amber-400"
-                          }`}
-                        />
-                        {slate.source === "live" ? "Live" : "Demo"} ·{" "}
-                        {slate.gameTypeName}
-                      </span>
-                      <div className="text-[10px] text-zinc-500 mt-1">
-                        {slate.label}
-                      </div>
+                    <div className="text-[10px] text-zinc-500 mb-2">
+                      {slate.label}
                     </div>
                   )}
 
@@ -452,6 +484,28 @@ export default function Home() {
           {teamError && <div className="text-red-400 text-sm">{teamError}</div>}
         </div>
 
+        {/* TEAM CONVEYOR — scroll through the optimizer's picks */}
+        {team.length > 0 && (
+          <div className="mx-auto max-w-4xl mb-6 px-4">
+            <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-2">
+              Your Lineup
+              <span className="ml-2 text-zinc-500 normal-case font-normal">
+                swipe to view each pick · tap a card for last 5 games
+              </span>
+            </h2>
+            <div className="dk-conveyor flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-1 px-1">
+              {team.map((p) => (
+                <div
+                  key={`conveyor-${lineupKey(p)}`}
+                  className="w-60 shrink-0 snap-start"
+                >
+                  <PlayerCard player={p} slot={p.slot} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* TEAM DISPLAY */}
         {team.length > 0 && (
           <div className="bg-zinc-900 rounded-xl p-6 mx-auto max-w-2xl text-center mb-6 shadow-xl">
@@ -499,7 +553,7 @@ export default function Home() {
                       </span>
                     </span>
 
-                    <span className="text-right text-xs">
+                    <span className="text-right text-xs tabular-nums">
                       <span className="text-lime-400 mr-2">
                         ${p.salary.toLocaleString()}
                       </span>
@@ -526,7 +580,7 @@ export default function Home() {
                 </div>
 
                 <div className="text-xs text-zinc-400 mt-1">
-                  Weighted score (0.7 × DK + 0.3 × value):{" "}
+                  Weighted score (0.7 × last-5 form + 0.3 × value):{" "}
                   {teamMeta.totalScore.toFixed(2)}
                 </div>
               </div>
@@ -669,18 +723,20 @@ export default function Home() {
 
         {/* POSITION FILTER + SEARCH */}
         <div className="flex flex-col items-center mb-6 px-4">
-          <div className="bg-lime-700 rounded-lg px-4 py-3 text-center shadow-md w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-2">Filter Players</h2>
+          <div className="bg-zinc-900/80 border border-lime-600/30 rounded-xl px-4 py-3 text-center shadow-md w-full max-w-md">
+            <h2 className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-3">
+              Filter Players
+            </h2>
 
             <div className="flex flex-wrap justify-center gap-2 mb-3">
               {["PG", "SG", "SF", "PF", "C"].map((pos) => (
                 <Button
                   key={pos}
                   onClick={() => setPosition(position === pos ? null : pos)}
-                  className={`px-4 py-2 text-white border ${
+                  className={`px-4 py-2 rounded-full text-sm border transition-colors ${
                     position === pos
-                      ? "bg-lime-500 border-lime-300"
-                      : "bg-zinc-800 border-zinc-600"
+                      ? "bg-lime-500 border-lime-300 text-black font-semibold hover:bg-lime-400"
+                      : "bg-zinc-800 border-zinc-700 text-white hover:border-lime-600/50 hover:bg-zinc-700"
                   }`}
                 >
                   {pos}
@@ -694,7 +750,7 @@ export default function Home() {
                 placeholder="Search players..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-zinc-700 text-white border border-zinc-600 focus:border-lime-500 focus:ring-lime-500"
+                className="bg-zinc-800 text-white border border-zinc-700 rounded-full px-4 focus:border-lime-500 focus:ring-lime-500"
               />
             </div>
           </div>
