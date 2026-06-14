@@ -74,13 +74,18 @@ export function PlayerCard({
 
   return (
     <div
-      className={`h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer border shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 relative ${
+      className={`isolate h-80 rounded-3xl bg-[#191b20] p-4 flex flex-col justify-between cursor-pointer border shadow-lg shadow-black/30 transition-all duration-200 hover:-translate-y-1 relative overflow-hidden ${
         onSelect
           ? "border-sky-500/60 hover:border-sky-400 ring-1 ring-sky-500/30"
-          : "border-zinc-800/80 hover:border-lime-500/40"
+          : "border-zinc-800/80 hover:border-lime-500/50"
       }`}
       onClick={handleToggle}
     >
+      {/* green footer glow — gives each card its own footprint in the grid.
+          Negative z keeps it above the card bg but behind the content. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 -z-10 bg-gradient-to-t from-lime-500/35 via-lime-500/10 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 -z-10 bg-lime-500/80" />
+
       {onSelect && (
         <span className="absolute top-2 right-3 px-2 py-0.5 rounded-full bg-sky-600 text-white text-[9px] font-bold uppercase tracking-wide">
           {selectLabel ?? "Tap to add"}

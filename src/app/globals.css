@@ -187,14 +187,40 @@ html.light .border-b-zinc-700 {
   border-color: #cbd5e1;
 }
 
-/* accent text needs darker shades for contrast on light slate */
+/* Accent badges: in dark mode they use dark translucent backgrounds with
+   light text. In light mode flip BOTH — light tint background + dark text —
+   so chips like the Live badge and value chips stay readable. */
+html.light .bg-lime-900\/60 {
+  background-color: #dcfce7; /* lime-100 */
+}
+html.light .bg-amber-900\/60,
+html.light .bg-amber-900\/50 {
+  background-color: #fef3c7; /* amber-100 */
+}
+html.light .bg-red-900\/50 {
+  background-color: #fee2e2; /* red-100 */
+}
+html.light .bg-sky-900\/30,
+html.light .bg-sky-900\/60 {
+  background-color: #e0f2fe; /* sky-100 */
+}
+
 html.light .text-lime-400,
 html.light .text-lime-300 {
-  color: #4d7c0f;
+  color: #4d7c0f; /* lime-700 */
 }
 html.light .text-sky-400,
-html.light .text-sky-300 {
-  color: #0369a1;
+html.light .text-sky-300,
+html.light .text-sky-200 {
+  color: #0369a1; /* sky-700 */
+}
+html.light .text-amber-400,
+html.light .text-amber-300 {
+  color: #b45309; /* amber-700 */
+}
+html.light .text-red-400,
+html.light .text-red-300 {
+  color: #b91c1c; /* red-700 */
 }
 
 /* scrollbar in light mode */
