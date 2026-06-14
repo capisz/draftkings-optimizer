@@ -164,7 +164,10 @@ html.light .bg-\[\#191b20\] {
 html.light .text-white,
 html.light .text-gray-200,
 html.light .text-zinc-200,
-html.light .text-zinc-300 {
+html.light .text-zinc-300,
+html.light .text-neutral-100,
+html.light .text-neutral-200,
+html.light .text-neutral-300 {
   color: #0f172a;
 }
 html.light .text-zinc-400,
