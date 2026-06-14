@@ -105,56 +105,59 @@ button {
    Adding `light` to <html> flips the palette via overrides so
    the component markup doesn't need per-class dark: variants.
 ============================================================ */
+/* A soft slate-grey light theme (not stark white). Palette based on
+   Tailwind slate: page ~slate-300, panels ~slate-100, accents slate-200. */
 html.light,
 html.light body {
-  background-color: #f4f4f5;
-  color: #18181b;
+  background-color: #cbd5e1;
+  color: #0f172a;
 }
 
-/* page background gradient */
+/* page background gradient (slate-200 -> slate-300 -> slate-400-ish) */
 html.light .from-zinc-800 {
-  --tw-gradient-from: #ffffff var(--tw-gradient-from-position);
-  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-from: #dbe2ea var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(219 226 234 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 html.light .via-zinc-900 {
-  --tw-gradient-to: rgb(244 244 245 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), #f4f4f5 var(--tw-gradient-via-position),
+  --tw-gradient-to: rgb(203 213 225 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #cbd5e1 var(--tw-gradient-via-position),
     var(--tw-gradient-to);
 }
 html.light .to-black {
-  --tw-gradient-to: #e4e4e7 var(--tw-gradient-to-position);
+  --tw-gradient-to: #b6c2d2 var(--tw-gradient-to-position);
 }
 
-/* surfaces */
+/* primary panels — light slate, clearly lifted off the page but not white */
 html.light .bg-zinc-900,
 html.light .bg-zinc-900\/80,
 html.light .bg-zinc-950\/70 {
-  background-color: #ffffff;
+  background-color: #f1f5f9;
 }
+/* secondary surfaces (pills, chips, sub-cards) — a touch darker for contrast */
 html.light .bg-zinc-900\/70,
 html.light .bg-zinc-800,
 html.light .bg-zinc-800\/70 {
-  background-color: #f1f1f3;
+  background-color: #e2e8f0;
 }
 html.light .bg-zinc-800\/60:hover,
 html.light .hover\:bg-zinc-800\/60:hover {
-  background-color: #ececef;
+  background-color: #d9e0ea;
 }
 html.light .bg-zinc-700,
 html.light .bg-zinc-600 {
-  background-color: #e4e4e7;
+  background-color: #cbd5e1;
 }
 html.light .hover\:bg-zinc-700:hover,
 html.light .hover\:bg-zinc-600:hover {
-  background-color: #d4d4d8;
+  background-color: #b6c2d2;
 }
 html.light .bg-black {
-  background-color: #f4f4f5;
+  background-color: #cbd5e1;
 }
 /* player cards (arbitrary value bg-[#191b20]) */
 html.light .bg-\[\#191b20\] {
-  background-color: #ffffff;
+  background-color: #f1f5f9;
 }
 
 /* text */
@@ -162,21 +165,17 @@ html.light .text-white,
 html.light .text-gray-200,
 html.light .text-zinc-200,
 html.light .text-zinc-300 {
-  color: #18181b;
+  color: #0f172a;
 }
-html.light .text-zinc-400 {
-  color: #52525b;
+html.light .text-zinc-400,
+html.light .text-neutral-400 {
+  color: #475569;
 }
 html.light .text-zinc-500,
-html.light .text-zinc-600 {
-  color: #71717a;
-}
-html.light .text-neutral-400 {
-  color: #52525b;
-}
+html.light .text-zinc-600,
 html.light .text-neutral-500,
 html.light .text-neutral-600 {
-  color: #71717a;
+  color: #64748b;
 }
 
 /* borders */
@@ -185,10 +184,10 @@ html.light .border-zinc-800\/80,
 html.light .border-zinc-700,
 html.light .border-zinc-600,
 html.light .border-b-zinc-700 {
-  border-color: #d4d4d8;
+  border-color: #cbd5e1;
 }
 
-/* accent text needs darker shades for contrast on white */
+/* accent text needs darker shades for contrast on light slate */
 html.light .text-lime-400,
 html.light .text-lime-300 {
   color: #4d7c0f;
@@ -200,9 +199,9 @@ html.light .text-sky-300 {
 
 /* scrollbar in light mode */
 html.light ::-webkit-scrollbar-thumb {
-  background: #c4c4c8;
+  background: #94a3b8;
 }
 html.light ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: #64748b;
 }
 
