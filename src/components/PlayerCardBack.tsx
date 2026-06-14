@@ -8,15 +8,11 @@ interface Props {
   recentGames?: GameStat[] | null;
 }
 
-export function PlayerCardBack({ color, recentGames }: Props) {
+export function PlayerCardBack({ recentGames }: Props) {
   const have = (recentGames?.length ?? 0) > 0;
-  const bgColor = color || "#191b20"; // match front card grey
 
   return (
-    <div
-      className="flex flex-col h-full w-full rounded-lg p-3"
-      style={{ backgroundColor: bgColor }}
-    >
+    <div className="flex flex-col h-full w-full rounded-lg p-3 bg-[#191b20]">
       {/* Compact list area, no header */}
       <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
         {have ? (

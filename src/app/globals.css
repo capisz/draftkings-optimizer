@@ -99,3 +99,110 @@ button {
   to   { transform: rotate(360deg); }
 }
 
+/* ============================================================
+   LIGHT MODE
+   Dark is the default (utilities authored with dark values).
+   Adding `light` to <html> flips the palette via overrides so
+   the component markup doesn't need per-class dark: variants.
+============================================================ */
+html.light,
+html.light body {
+  background-color: #f4f4f5;
+  color: #18181b;
+}
+
+/* page background gradient */
+html.light .from-zinc-800 {
+  --tw-gradient-from: #ffffff var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+html.light .via-zinc-900 {
+  --tw-gradient-to: rgb(244 244 245 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #f4f4f5 var(--tw-gradient-via-position),
+    var(--tw-gradient-to);
+}
+html.light .to-black {
+  --tw-gradient-to: #e4e4e7 var(--tw-gradient-to-position);
+}
+
+/* surfaces */
+html.light .bg-zinc-900,
+html.light .bg-zinc-900\/80,
+html.light .bg-zinc-950\/70 {
+  background-color: #ffffff;
+}
+html.light .bg-zinc-900\/70,
+html.light .bg-zinc-800,
+html.light .bg-zinc-800\/70 {
+  background-color: #f1f1f3;
+}
+html.light .bg-zinc-800\/60:hover,
+html.light .hover\:bg-zinc-800\/60:hover {
+  background-color: #ececef;
+}
+html.light .bg-zinc-700,
+html.light .bg-zinc-600 {
+  background-color: #e4e4e7;
+}
+html.light .hover\:bg-zinc-700:hover,
+html.light .hover\:bg-zinc-600:hover {
+  background-color: #d4d4d8;
+}
+html.light .bg-black {
+  background-color: #f4f4f5;
+}
+/* player cards (arbitrary value bg-[#191b20]) */
+html.light .bg-\[\#191b20\] {
+  background-color: #ffffff;
+}
+
+/* text */
+html.light .text-white,
+html.light .text-gray-200,
+html.light .text-zinc-200,
+html.light .text-zinc-300 {
+  color: #18181b;
+}
+html.light .text-zinc-400 {
+  color: #52525b;
+}
+html.light .text-zinc-500,
+html.light .text-zinc-600 {
+  color: #71717a;
+}
+html.light .text-neutral-400 {
+  color: #52525b;
+}
+html.light .text-neutral-500,
+html.light .text-neutral-600 {
+  color: #71717a;
+}
+
+/* borders */
+html.light .border-zinc-800,
+html.light .border-zinc-800\/80,
+html.light .border-zinc-700,
+html.light .border-zinc-600,
+html.light .border-b-zinc-700 {
+  border-color: #d4d4d8;
+}
+
+/* accent text needs darker shades for contrast on white */
+html.light .text-lime-400,
+html.light .text-lime-300 {
+  color: #4d7c0f;
+}
+html.light .text-sky-400,
+html.light .text-sky-300 {
+  color: #0369a1;
+}
+
+/* scrollbar in light mode */
+html.light ::-webkit-scrollbar-thumb {
+  background: #c4c4c8;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+

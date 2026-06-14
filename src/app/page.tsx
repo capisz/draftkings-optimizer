@@ -147,6 +147,31 @@ export default function Home() {
   // manual replace mode: which lineup spot is being replaced
   const [replaceTarget, setReplaceTarget] = useState<LineupPlayer | null>(null);
 
+  // theme (dark is the default; `light` class on <html> flips the palette)
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("theme") as "dark" | "light" | null)
+        : null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.classList.toggle("light", saved === "light");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      document.documentElement.classList.toggle("light", next === "light");
+      try {
+        localStorage.setItem("theme", next);
+      } catch {}
+      return next;
+    });
+  };
+
   // Rotation cursor per slot, so pressing AI again on the same row cycles to
   // the next-best alternative instead of repeating the same pick.
   const aiRotationRef = useRef<{ key: string; index: number }>({
@@ -596,27 +621,38 @@ export default function Home() {
               />
               <h1 className="text-lg font-bold tracking-tight">
                 Lineup<span className="text-lime-400">Optimizer</span>
+                <span className="text-zinc-400">.ai</span>
               </h1>
             </div>
-            {slate && (
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 ${
-                  slate.source === "live"
-                    ? "bg-lime-900/60 text-lime-300"
-                    : "bg-amber-900/60 text-amber-300"
-                }`}
-              >
+            <div className="flex items-center gap-3">
+              {slate && (
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 ${
                     slate.source === "live"
-                      ? "bg-lime-400 animate-pulse"
-                      : "bg-amber-400"
+                      ? "bg-lime-900/60 text-lime-300"
+                      : "bg-amber-900/60 text-amber-300"
                   }`}
-                />
-                {slate.source === "live" ? "Live" : "Demo"} ·{" "}
-                {slate.gameType === "showdown" ? "Showdown" : "Classic"}
-              </span>
-            )}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      slate.source === "live"
+                        ? "bg-lime-400 animate-pulse"
+                        : "bg-amber-400"
+                    }`}
+                  />
+                  {slate.source === "live" ? "Live" : "Demo"} ·{" "}
+                  {slate.gameType === "showdown" ? "Showdown" : "Classic"}
+                </span>
+              )}
+              <button
+                onClick={toggleTheme}
+                aria-label="Toggle dark / light mode"
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                className="h-8 w-8 flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-base hover:border-lime-500/60 transition-colors shrink-0"
+              >
+                {theme === "dark" ? "☀️" : "🌙"}
+              </button>
+            </div>
           </div>
         </header>
 

@@ -178,11 +178,7 @@ export function PlayerCard({
         </>
       ) : (
         // BACK VIEW
-        <PlayerCardBack
-          color="#191b20" // grey, matches app theme
-          player={player}
-          recentGames={recentGames}
-        />
+        <PlayerCardBack player={player} recentGames={recentGames} />
       )}
     </div>
   );
