@@ -23,7 +23,7 @@ The goal isn’t to “solve” DFS, but to give you a fast, visual way to:
 - **Live DraftKings Data:** Pulls the current NBA slate (salaries, FPPG, matchups, player photos) straight from DraftKings' public lobby/draftables endpoints — no CSV needed. Falls back to a bundled demo slate when no live slate is available.
 - **Classic & Showdown Support:** Builds 8-slot Classic lineups in season, and CPT + 5 UTIL Showdown lineups (with the 1.5× captain multiplier) for single-game slates like the Finals.
 - **Live Player Images:** Official DraftKings player photos, with NBA.com CDN headshots as a fallback.
-- **AI Analyst (Claude):** Highlight any lineup slots and ask the AI to find better picks from the live player pool — it respects position eligibility and the salary cap, explains each swap, and you apply them with one click.
+- **AI Analyst (built-in, no API key):** Press **AI** on any lineup slot and a local recommendation model finds the best available replacement from the live pool — respecting position eligibility and the salary cap — and explains why. Press it again to cycle to the next-best alternative. (Or use **Swap** to pick a replacement yourself from the card grid.)
 - **Player Ranking:** Compute a custom **efficiency score** that balances salary vs. fantasy production.
 - **Lineup Generation:** Build a recommended lineup that:
 - Respects DraftKings position rules
@@ -100,10 +100,10 @@ The current DraftKings NBA slate loads automatically — a **Live / Demo badge**
 
 ### 3. Improve it with the AI analyst
 
-1. Tap any lineup rows you're unsure about to highlight them.
-2. Optionally add a note ("more upside", "fade Knicks", "save salary").
-3. Click **Suggest better picks** — Claude scans the live pool and proposes cap-legal, position-legal swaps with reasoning and salary/projection deltas.
-4. Click **Apply** to accept the swaps.
+1. On any lineup row, press **AI** — the local model proposes the best cap-legal, position-legal replacement with reasoning and salary/projection deltas.
+2. Press **AI** again on the same row to cycle to the next-best alternative.
+3. Or press **Swap** to pick a replacement yourself from the card grid.
+4. Click **Apply** to accept a suggested swap.
 
 Use this as a **starting point**, then tweak manually inside DraftKings with your own strategy.
 
@@ -143,17 +143,7 @@ You should see the DraftKings optimizer UI.
 
 ## ⚙️ Environment Variables
 
-Live DraftKings data works with **no configuration** — the app fetches the current slate server-side and falls back to bundled demo data if DraftKings is unreachable.
-
-The AI analyst needs an Anthropic API key. Create `.env.local`:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-# optional, defaults to claude-opus-4-8
-ANTHROPIC_MODEL=claude-opus-4-8
-```
-
-Without a key the rest of the app works normally; the AI button just reports that the analyst is offline.
+**None required.** Live DraftKings data is fetched server-side (with a bundled demo-slate fallback if DraftKings is unreachable), and the AI analyst is a local recommendation model — there are no API keys to configure.
 
 ---
 

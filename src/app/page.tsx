@@ -1,7 +1,7 @@
 // src/app/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import {
   useEfficientPlayers,
@@ -12,6 +12,7 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { rankReplacements, explainPick } from "@/lib/recommender";
 
 type LineupPlayer = EfficientPlayer & {
   slot: string;
@@ -145,6 +146,13 @@ export default function Home() {
 
   // manual replace mode: which lineup spot is being replaced
   const [replaceTarget, setReplaceTarget] = useState<LineupPlayer | null>(null);
+
+  // Rotation cursor per slot, so pressing AI again on the same row cycles to
+  // the next-best alternative instead of repeating the same pick.
+  const aiRotationRef = useRef<{ key: string; index: number }>({
+    key: "",
+    index: 0,
+  });
 
   // progress bar state
   const [progress, setProgress] = useState(0);
@@ -421,27 +429,88 @@ export default function Home() {
     }
   };
 
-  // ----- AI PICKS A REPLACEMENT FOR ONE SLOT -----
-  const aiReplaceSlot = async (p: LineupPlayer) => {
+  // ----- AI PICKS A REPLACEMENT FOR ONE SLOT (local model, no API key) -----
+  const aiReplaceSlot = (p: LineupPlayer) => {
+    if (!p.id) {
+      // empty manual slot — fall back to the grid picker
+      setReplaceTarget(p);
+      return;
+    }
+
     setSelectedKeys([lineupKey(p)]);
     setReplaceTarget(null);
-    setAiLoading(true);
     setAiError(null);
     setAiResult(null);
-    try {
-      const res = await fetch("/api/ai-swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineup: team, selectedKeys: [lineupKey(p)] }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "AI suggestion failed");
-      setAiResult(json as AiSwapResponse);
-    } catch (e: any) {
-      setAiError(e.message ?? "Unknown error");
-    } finally {
-      setAiLoading(false);
-    }
+    setAiLoading(true);
+
+    // small delay so the recommendation reads as deliberate analysis
+    setTimeout(() => {
+      try {
+        const cap = teamMeta?.salaryCap ?? 50000;
+        const othersSalary = team
+          .filter((t) => t !== p)
+          .reduce((s, t) => s + t.salary, 0);
+        const budget = cap - othersSalary;
+        const lineupIds = new Set(team.filter((t) => t.id).map((t) => t.id));
+
+        const ranked = rankReplacements({
+          pool: efficientPlayers,
+          lineupIds,
+          target: { id: p.id, slot: p.slot, salary: p.salary },
+          budget,
+        });
+
+        if (!ranked.length) {
+          setAiError(
+            "No eligible upgrade fits this slot under the remaining cap. Free up salary by swapping a pricier slot first."
+          );
+          setAiLoading(false);
+          return;
+        }
+
+        // advance the rotation cursor for repeated presses on the same slot
+        const key = lineupKey(p);
+        const rot = aiRotationRef.current;
+        const index = rot.key === key ? (rot.index + 1) % ranked.length : 0;
+        aiRotationRef.current = { key, index };
+
+        const choice = ranked[index];
+        const incoming = toSlotPlayer(choice.player, p.slot);
+        const kept = incoming.id === p.id;
+        const isUpgrade = incoming.avgDK > p.avgDK + 0.5;
+
+        const newLineup = team.map((t) => (t === p ? incoming : t));
+        const totals = lineupTotals(newLineup, cap);
+
+        const lead =
+          index === 0
+            ? isUpgrade
+              ? "Top upgrade below"
+              : "Your current pick already grades out well — here's the best available alternative"
+            : `Alternative #${index + 1}`;
+
+        setAiResult({
+          summary:
+            `The model ranked ${ranked.length} eligible ${p.slot} option${ranked.length > 1 ? "s" : ""} on recent form, value, minutes trend and reliability. ` +
+            `${lead} — press AI again for the next option.`,
+          suggestions: [
+            {
+              slot: p.slot,
+              out: p,
+              in: incoming,
+              reasoning: explainPick(choice.player, p, choice.cost - p.salary),
+              kept,
+            },
+          ],
+          newLineup,
+          newTotals: totals,
+        });
+      } catch (e: any) {
+        setAiError(e.message ?? "Recommendation failed");
+      } finally {
+        setAiLoading(false);
+      }
+    }, 450);
   };
 
   const filledTeam = team.filter((p) => p.id);

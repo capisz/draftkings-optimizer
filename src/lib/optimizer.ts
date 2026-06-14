@@ -1,5 +1,5 @@
 // src/lib/optimizer.ts
-// Lineup construction shared by /api/generate-lineup and /api/ai-swap.
+// Lineup construction shared by /api/generate-lineup and the recommender.
 // Supports DraftKings NBA Classic (8 slots) and Showdown Captain Mode
 // (CPT at 1.5x salary/points + 5 UTIL).
 
