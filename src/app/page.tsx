@@ -688,6 +688,24 @@ export default function Home() {
           animation: dk-marquee 30s linear infinite;
           will-change: transform;
         }
+        /* fade both edges of the matchup ticker so the right doesn't run flush
+           against the crown the way the left is inset from the box padding */
+        .dk-matchup-marquee {
+          -webkit-mask-image: linear-gradient(
+            to right,
+            transparent 0,
+            #000 28px,
+            #000 calc(100% - 28px),
+            transparent 100%
+          );
+          mask-image: linear-gradient(
+            to right,
+            transparent 0,
+            #000 28px,
+            #000 calc(100% - 28px),
+            transparent 100%
+          );
+        }
         .dk-conveyor {
           scrollbar-width: thin;
           scrollbar-color: #65a30d transparent;
@@ -791,7 +809,7 @@ export default function Home() {
                 onClick={toggleTheme}
                 aria-label="Toggle dark / light mode"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                className="h-8 w-8 flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-base hover:border-lime-500/60 transition-colors shrink-0"
+                className="dk-theme-toggle h-8 w-8 flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-base hover:border-lime-500/60 transition-colors shrink-0"
               >
                 {theme === "dark" ? "☀️" : "🌙"}
               </button>
@@ -826,7 +844,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  <div className="relative mt-1 overflow-hidden">
+                  <div className="dk-matchup-marquee relative mt-1 overflow-hidden">
                     <div className="dk-marquee-track">
                       {[...matchups, ...matchups].map((m, idx) => (
                         <div

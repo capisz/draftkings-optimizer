@@ -281,3 +281,12 @@ html.light ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
 
+/* theme toggle needs contrast against the light header — amber pill */
+html.light .dk-theme-toggle {
+  background-color: #fcd34d; /* amber-300 */
+  border-color: #d97706; /* amber-600 */
+}
+html.light .dk-theme-toggle:hover {
+  background-color: #fbbf24; /* amber-400 */
+}
+

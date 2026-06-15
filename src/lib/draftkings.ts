@@ -6,7 +6,7 @@
 import demoData from "@/data/players-2025-11-14-last5.json";
 import { getHeadshotUrl } from "@/lib/nbaHeadshots";
 import { getLastFiveByPlayer, normalizeName } from "@/lib/nbaGameLogs";
-import { enrichMlbMatchups } from "@/lib/mlbStats";
+import { enrichMlbMatchups, getMlbLast5 } from "@/lib/mlbStats";
 
 export type Sport = "NBA" | "MLB";
 
@@ -172,6 +172,34 @@ async function enrichWithRecentForm(players: PoolPlayer[]): Promise<void> {
   applyReliability(players);
 }
 
+// MLB last-5 form. One gameLog call per player, so we bound it to the most
+// salient names (by FPPG) — the studs and likely-rostered players. Reliability
+// is then judged only over that set so we don't flag everyone "no recent data".
+async function enrichMlbRecentForm(
+  players: PoolPlayer[],
+  startDateIso: string | null
+): Promise<void> {
+  const season =
+    Number((startDateIso ?? "").slice(0, 4)) || new Date().getFullYear();
+
+  const top = [...players]
+    .filter((p) => p.mlbId)
+    .sort((a, b) => b.fppg - a.fppg)
+    .slice(0, 140);
+
+  const logs = await getMlbLast5(
+    top.map((p) => ({ dkId: p.id, mlbId: p.mlbId as number, position: p.position })),
+    season
+  );
+
+  for (const p of top) {
+    const last5 = logs.get(p.id);
+    if (last5?.length) applyRecentForm(p, last5);
+  }
+  // judge reliability only over the players we actually pulled logs for
+  applyReliability(top);
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Flag players whose recent usage makes their projection shaky: no/few
@@ -186,6 +214,11 @@ export function applyReliability(players: PoolPlayer[]): void {
 
   for (const p of players) {
     const n = p.last5.length;
+    // Starting/relief pitchers work on a rotation, not daily — the "spaced-out
+    // usage" rule (built for NBA minutes / MLB platoon bats) doesn't apply, and
+    // a layoff only signals trouble after a longer gap.
+    const isPitcher = /^(SP|RP|P)$/i.test((p.position || "").trim());
+    const layoffDays = isPitcher ? 14 : 10;
 
     if (n === 0) {
       p.tentative = true;
@@ -202,13 +235,13 @@ export function applyReliability(players: PoolPlayer[]): void {
     const daysSinceLast = Math.round((poolLatest - newest) / DAY_MS);
     const avgGapDays = n >= 2 ? (newest - oldest) / DAY_MS / (n - 1) : 0;
 
-    if (daysSinceLast > 10) {
+    if (daysSinceLast > layoffDays) {
       p.tentative = true;
       p.tentativeReason = `hasn't played in ${daysSinceLast} days`;
     } else if (n < 3) {
       p.tentative = true;
       p.tentativeReason = `only ${n} recent game${n > 1 ? "s" : ""}`;
-    } else if (avgGapDays > 5.5) {
+    } else if (!isPitcher && avgGapDays > 5.5) {
       p.tentative = true;
       p.tentativeReason = "in and out of the lineup";
     } else {
@@ -433,6 +466,7 @@ export async function getPlayerPool(sport: Sport = "NBA"): Promise<PlayerPool> {
         await enrichWithRecentForm(pool.players);
       } else if (sport === "MLB") {
         await enrichMlbMatchups(pool.players, pool.slate.startDate);
+        await enrichMlbRecentForm(pool.players, pool.slate.startDate);
       }
     } catch (err) {
       console.error(`[draftkings] ${sport} enrichment failed:`, err);
