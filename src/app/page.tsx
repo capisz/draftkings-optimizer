@@ -127,6 +127,59 @@ function lineupTotals(lineup: LineupPlayer[], salaryCap: number): LineupTotals {
   };
 }
 
+function EmptyLineupSlotCard({
+  slot,
+  selected,
+  onSelect,
+}: {
+  slot: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`group dk-card isolate h-80 w-full rounded-3xl bg-[#191b20] p-4 pt-5 flex flex-col justify-between text-left border shadow-lg shadow-black/40 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-lime-900/30 relative overflow-hidden ${
+        selected
+          ? "border-sky-400 ring-2 ring-sky-500/50"
+          : "border-dashed border-zinc-700/90 hover:border-lime-500/70"
+      }`}
+      aria-label={`Add player to ${slot} slot`}
+    >
+      <div className="dk-card-accent pointer-events-none absolute inset-x-0 top-0 h-1.5" />
+      <div className="dk-card-sheen pointer-events-none absolute inset-0 -z-10" />
+
+      <div className="flex items-center justify-between">
+        <span className="rounded-full border border-lime-500/40 bg-lime-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-lime-300">
+          Empty Slot
+        </span>
+        <span className="rounded-md bg-lime-500 px-1.5 py-0.5 text-[9px] font-bold text-black">
+          {slot}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-lime-500/40 bg-black/20 text-4xl font-black tracking-tight text-lime-300">
+          {slot}
+        </div>
+        <div className="text-sm font-semibold text-white">
+          {selected ? "Choose a player below" : `Add ${slot}`}
+        </div>
+        <div className="mt-1 max-w-[12rem] text-xs leading-5 text-zinc-400">
+          {selected
+            ? "The player pool is filtered for this roster spot."
+            : "Tap to fill this position from the player pool."}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 px-3 py-3 text-xs text-zinc-500">
+        Salary and projection will appear here after a player is selected.
+      </div>
+    </button>
+  );
+}
+
 export default function Home() {
   const [sport, setSport] = useState<"NBA" | "MLB">("NBA");
   const { efficientPlayers, slate, isLoading, error } =
@@ -151,31 +204,6 @@ export default function Home() {
 
   // manual replace mode: which lineup spot is being replaced
   const [replaceTarget, setReplaceTarget] = useState<LineupPlayer | null>(null);
-
-  // theme (dark is the default; `light` class on <html> flips the palette)
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? (localStorage.getItem("theme") as "dark" | "light" | null)
-        : null;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.classList.toggle("light", saved === "light");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      document.documentElement.classList.toggle("light", next === "light");
-      try {
-        localStorage.setItem("theme", next);
-      } catch {}
-      return next;
-    });
-  };
 
   // restore saved sport on mount
   useEffect(() => {
@@ -669,7 +697,7 @@ export default function Home() {
     }, 450);
   };
 
-  const filledTeam = team.filter((p) => p.id);
+  const hasEmptySlots = team.some((p) => !p.id);
 
   return (
     <>
@@ -755,7 +783,7 @@ export default function Home() {
         {teamLoading && <LoadingOverlay progress={progress} />}
 
         {/* APP HEADER */}
-        <header className="sticky top-0 z-40 backdrop-blur-md bg-zinc-950/70 border-b border-zinc-800/80 mb-6">
+        <header className="dk-app-header sticky top-0 z-40 backdrop-blur-md bg-zinc-950/70 border-b border-zinc-800/80 mb-6">
           <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Image
@@ -806,14 +834,6 @@ export default function Home() {
                   {slate.gameType === "showdown" ? "Showdown" : "Classic"}
                 </span>
               )}
-              <button
-                onClick={toggleTheme}
-                aria-label="Toggle dark / light mode"
-                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                className="dk-theme-toggle h-8 w-8 flex items-center justify-center rounded-full border border-zinc-500 bg-zinc-700 text-base hover:border-lime-400 transition-colors shrink-0"
-              >
-                {theme === "dark" ? "☀️" : "🌙"}
-              </button>
             </div>
           </div>
         </header>
@@ -887,7 +907,7 @@ export default function Home() {
             <Button
               onClick={generateTeam}
               disabled={teamLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-lime-600 px-6 py-2 text-sm font-semibold text-black transition-all duration-150 hover:bg-lime-500 active:scale-95 disabled:opacity-60 disabled:hover:bg-lime-600"
+              className="dk-generate-team-button inline-flex items-center justify-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60"
             >
               {teamLoading ? "Optimizing lineup…" : "Generate Team"}
             </Button>
@@ -908,15 +928,16 @@ export default function Home() {
         {team.length > 0 && (
         <div className="mx-auto max-w-6xl mb-6 px-4">
         <div className="bg-zinc-900 rounded-xl p-6 shadow-xl flex flex-col lg:flex-row gap-6 items-start">
-        {/* TEAM CONVEYOR — auto-scrolls the optimizer's picks, pauses on hover */}
-        {filledTeam.length > 0 && (
+        {/* TEAM CONVEYOR — auto-scrolls lineup cards, pauses on hover */}
+        {team.length > 0 && (
           <div className="w-full lg:flex-1 lg:min-w-0 order-2 lg:order-1">
             <div className="text-xs font-semibold text-lime-400 uppercase tracking-wide mb-1">
               Your Lineup
             </div>
             <div className="text-[11px] text-zinc-500 mb-3">
-              auto-scrolling · click &amp; drag to browse · tap a card for last 5
-              games
+              {hasEmptySlots
+                ? "auto-scrolling · click & drag to browse · tap an empty slot to add"
+                : "auto-scrolling · click & drag to browse · tap a card for last 5 games"}
             </div>
             <div
               ref={conveyorRef}
@@ -932,9 +953,25 @@ export default function Home() {
               onClickCapture={conveyorClickCapture}
             >
               {/* duplicate the cards so the auto-scroll loop is seamless */}
-              {[...filledTeam, ...filledTeam].map((p, i) => (
-                <div key={`conveyor-${lineupKey(p)}-${i}`} className="w-60 shrink-0">
-                  <PlayerCard player={p} slot={p.slot} />
+              {[...team, ...team].map((p, i) => (
+                <div
+                  key={`conveyor-${p.slot}-${p.id || "empty"}-${i}`}
+                  className="w-60 shrink-0"
+                >
+                  {p.id ? (
+                    <PlayerCard player={p} slot={p.slot} />
+                  ) : (
+                    <EmptyLineupSlotCard
+                      slot={p.slot}
+                      selected={replaceTarget === p}
+                      onSelect={() => {
+                        setSelectedKeys([]);
+                        setAiResult(null);
+                        setAiError(null);
+                        setReplaceTarget(replaceTarget === p ? null : p);
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -992,7 +1029,11 @@ export default function Home() {
                     className={`flex justify-between items-center py-1 px-2 rounded-md transition-colors border ${
                       isReplaceTarget
                         ? "bg-sky-900/30 border-sky-500 text-white"
-                        : "bg-transparent border-transparent border-b-zinc-700 text-gray-200 hover:bg-zinc-800/60"
+                        : `${
+                            idx % 2 === 0
+                              ? "dk-lineup-row-alt"
+                              : "dk-lineup-row-base"
+                          } border-transparent border-b-zinc-700 text-gray-200`
                     }`}
                   >
                     <span className="text-left flex items-center gap-2 flex-1 min-w-0">
@@ -1000,13 +1041,7 @@ export default function Home() {
                         <span className="font-semibold text-lime-300 mr-2">
                           {p.slot}
                         </span>
-                        <span
-                          className={
-                            idx % 2 === 0
-                              ? "font-semibold text-white"
-                              : "font-semibold text-zinc-400"
-                          }
-                        >
+                        <span className="font-semibold text-white">
                           {p.name}
                         </span>{" "}
                         <span className="text-xs text-zinc-400">

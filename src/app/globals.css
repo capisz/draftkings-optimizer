@@ -144,150 +144,48 @@ button {
   }
 }
 
+.dk-lineup-row-alt {
+  background-color: rgba(39, 39, 42, 0.36);
+}
+.dk-lineup-row-base:hover,
+.dk-lineup-row-alt:hover {
+  background-color: rgba(39, 39, 42, 0.6);
+}
+
 /* ============================================================
-   LIGHT MODE
-   Dark is the default (utilities authored with dark values).
-   Adding `light` to <html> flips the palette via overrides so
-   the component markup doesn't need per-class dark: variants.
+   APP CHROME
 ============================================================ */
-/* A soft sage / green-slate light theme. The PAGE is the lightest layer;
-   panels, the matchup ticker box, and the pool controls sit a step DARKER so
-   they read as contained surfaces with depth — never white. */
-html.light,
-html.light body {
-  background-color: #cfdbd0;
-  color: #0f172a;
+.dk-app-header {
+  background-color: #050806;
+  background-image: linear-gradient(
+    90deg,
+    rgba(3, 4, 5, 0.98) 0%,
+    rgba(7, 12, 8, 0.97) 28%,
+    rgba(18, 31, 12, 0.95) 55%,
+    rgba(47, 78, 21, 0.92) 78%,
+    rgba(92, 138, 32, 0.9) 100%
+  );
+  border-color: rgba(132, 204, 22, 0.1);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+    0 10px 30px rgba(0, 0, 0, 0.28);
+}
+.dk-app-header .text-zinc-400 {
+  color: #b7c8a6;
 }
 
-/* page background gradient (lightest layer) */
-html.light .from-zinc-800 {
-  --tw-gradient-from: #d4dfd5 var(--tw-gradient-from-position);
-  --tw-gradient-to: rgb(212 223 213 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+.dk-generate-team-button {
+  background-color: #84cc16;
+  color: #050505;
+  border: 1px solid rgba(190, 242, 100, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 24px rgba(0, 0, 0, 0.22);
 }
-html.light .via-zinc-900 {
-  --tw-gradient-to: rgb(207 219 208 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), #cfdbd0 var(--tw-gradient-via-position),
-    var(--tw-gradient-to);
+.dk-generate-team-button:hover:not(:disabled) {
+  background-color: #84cc16;
+  border-color: rgba(190, 242, 100, 0.58);
 }
-html.light .to-black {
-  --tw-gradient-to: #c2d1c4 var(--tw-gradient-to-position);
+.dk-generate-team-button:disabled {
+  background-color: #84cc16;
 }
-
-/* panels / boxes (matchups, team box) — darker than the page for depth */
-html.light .bg-zinc-900,
-html.light .bg-zinc-900\/80,
-html.light .bg-zinc-950\/70 {
-  background-color: #bfcfc1;
-}
-/* secondary surfaces (pool controls, pills, sub-cards) — darker still */
-html.light .bg-zinc-900\/70,
-html.light .bg-zinc-800,
-html.light .bg-zinc-800\/70 {
-  background-color: #b2c4b4;
-}
-html.light .bg-zinc-800\/60:hover,
-html.light .hover\:bg-zinc-800\/60:hover {
-  background-color: #a8bbab;
-}
-html.light .bg-zinc-700,
-html.light .bg-zinc-600 {
-  background-color: #a8bbab;
-}
-html.light .hover\:bg-zinc-700:hover,
-html.light .hover\:bg-zinc-600:hover {
-  background-color: #98ad9b;
-}
-html.light .bg-black {
-  background-color: #cfdbd0;
-}
-/* player cards (arbitrary value bg-[#191b20]) — between page and panels so they
-   pop against both the page grid and the (darker) team box; never white */
-html.light .bg-\[\#191b20\] {
-  background-color: #c8d8ca;
-}
-
-/* text */
-html.light .text-white,
-html.light .text-gray-200,
-html.light .text-zinc-200,
-html.light .text-zinc-300,
-html.light .text-neutral-100,
-html.light .text-neutral-200,
-html.light .text-neutral-300 {
-  color: #0f172a;
-}
-html.light .text-zinc-400,
-html.light .text-neutral-400 {
-  color: #475569;
-}
-html.light .text-zinc-500,
-html.light .text-zinc-600,
-html.light .text-neutral-500,
-html.light .text-neutral-600 {
-  color: #64748b;
-}
-
-/* borders */
-html.light .border-zinc-800,
-html.light .border-zinc-800\/80,
-html.light .border-zinc-700,
-html.light .border-zinc-600,
-html.light .border-b-zinc-700 {
-  border-color: #9cb19f;
-}
-
-/* Accent badges: in dark mode they use dark translucent backgrounds with
-   light text. In light mode flip BOTH — light tint background + dark text —
-   so chips like the Live badge and value chips stay readable. */
-html.light .bg-lime-900\/60 {
-  background-color: #dcfce7; /* lime-100 */
-}
-html.light .bg-amber-900\/60,
-html.light .bg-amber-900\/50 {
-  background-color: #fef3c7; /* amber-100 */
-}
-html.light .bg-red-900\/50 {
-  background-color: #fee2e2; /* red-100 */
-}
-html.light .bg-sky-900\/30,
-html.light .bg-sky-900\/60 {
-  background-color: #e0f2fe; /* sky-100 */
-}
-
-html.light .text-lime-400,
-html.light .text-lime-300,
-html.light .text-lime-300\/80 {
-  color: #4d7c0f; /* lime-700 */
-}
-html.light .text-sky-400,
-html.light .text-sky-300,
-html.light .text-sky-200 {
-  color: #0369a1; /* sky-700 */
-}
-html.light .text-amber-400,
-html.light .text-amber-300 {
-  color: #b45309; /* amber-700 */
-}
-html.light .text-red-400,
-html.light .text-red-300 {
-  color: #b91c1c; /* red-700 */
-}
-
-/* scrollbar in light mode */
-html.light ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-}
-html.light ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* theme toggle needs contrast against the light header — amber pill */
-html.light .dk-theme-toggle {
-  background-color: #fcd34d; /* amber-300 */
-  border-color: #d97706; /* amber-600 */
-}
-html.light .dk-theme-toggle:hover {
-  background-color: #fbbf24; /* amber-400 */
-}
-
