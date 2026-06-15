@@ -150,61 +150,61 @@ button {
    Adding `light` to <html> flips the palette via overrides so
    the component markup doesn't need per-class dark: variants.
 ============================================================ */
-/* A soft sage / green-slate light theme — deliberately tinted so light mode
-   reads as simply "lighter than dark", never stark white. */
+/* A soft sage / green-slate light theme. The PAGE is the lightest layer;
+   panels, the matchup ticker box, and the pool controls sit a step DARKER so
+   they read as contained surfaces with depth — never white. */
 html.light,
 html.light body {
-  background-color: #c1d0c4;
+  background-color: #cfdbd0;
   color: #0f172a;
 }
 
-/* page background gradient — a soft sage/green-slate, deliberately tinted so
-   light mode reads as "lighter than dark" rather than white */
+/* page background gradient (lightest layer) */
 html.light .from-zinc-800 {
-  --tw-gradient-from: #cbd8cc var(--tw-gradient-from-position);
-  --tw-gradient-to: rgb(203 216 204 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-from: #d4dfd5 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(212 223 213 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 html.light .via-zinc-900 {
-  --tw-gradient-to: rgb(193 208 196 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), #c1d0c4 var(--tw-gradient-via-position),
+  --tw-gradient-to: rgb(207 219 208 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #cfdbd0 var(--tw-gradient-via-position),
     var(--tw-gradient-to);
 }
 html.light .to-black {
-  --tw-gradient-to: #b1c2b4 var(--tw-gradient-to-position);
+  --tw-gradient-to: #c2d1c4 var(--tw-gradient-to-position);
 }
 
-/* primary panels — light sage, clearly tinted (not white) */
+/* panels / boxes (matchups, team box) — darker than the page for depth */
 html.light .bg-zinc-900,
 html.light .bg-zinc-900\/80,
 html.light .bg-zinc-950\/70 {
-  background-color: #d4e0d6;
+  background-color: #bfcfc1;
 }
-/* secondary surfaces (pills, chips, sub-cards) — a touch deeper for contrast */
+/* secondary surfaces (pool controls, pills, sub-cards) — darker still */
 html.light .bg-zinc-900\/70,
 html.light .bg-zinc-800,
 html.light .bg-zinc-800\/70 {
-  background-color: #c7d5c9;
+  background-color: #b2c4b4;
 }
 html.light .bg-zinc-800\/60:hover,
 html.light .hover\:bg-zinc-800\/60:hover {
-  background-color: #bccdbf;
+  background-color: #a8bbab;
 }
 html.light .bg-zinc-700,
 html.light .bg-zinc-600 {
-  background-color: #b3c5b6;
+  background-color: #a8bbab;
 }
 html.light .hover\:bg-zinc-700:hover,
 html.light .hover\:bg-zinc-600:hover {
-  background-color: #a2b7a6;
+  background-color: #98ad9b;
 }
 html.light .bg-black {
-  background-color: #c1d0c4;
+  background-color: #cfdbd0;
 }
-/* player cards (arbitrary value bg-[#191b20]) — a hair lighter than the panels
-   so cards still pop, but firmly in the sage family, never white */
+/* player cards (arbitrary value bg-[#191b20]) — between page and panels so they
+   pop against both the page grid and the (darker) team box; never white */
 html.light .bg-\[\#191b20\] {
-  background-color: #dde8de;
+  background-color: #c8d8ca;
 }
 
 /* text */
@@ -234,7 +234,7 @@ html.light .border-zinc-800\/80,
 html.light .border-zinc-700,
 html.light .border-zinc-600,
 html.light .border-b-zinc-700 {
-  border-color: #abbfae;
+  border-color: #9cb19f;
 }
 
 /* Accent badges: in dark mode they use dark translucent backgrounds with

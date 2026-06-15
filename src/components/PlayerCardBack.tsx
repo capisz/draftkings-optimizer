@@ -21,7 +21,7 @@ export function PlayerCardBack({ recentGames }: Props) {
               key={idx}
               className="flex items-center justify-between text-[11px]"
             >
-              <span className="text-white/75 truncate max-w-[55%]">
+              <span className="text-zinc-300 truncate max-w-[55%]">
                 {g.opponent}
               </span>
               <span className="font-semibold text-lime-400">
@@ -30,7 +30,7 @@ export function PlayerCardBack({ recentGames }: Props) {
             </div>
           ))
         ) : (
-          <div className="text-[11px] text-white/75 text-center mt-2">
+          <div className="text-[11px] text-zinc-300 text-center mt-2">
             No recent game data available.
           </div>
         )}

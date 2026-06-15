@@ -92,6 +92,9 @@ function canPlaySlot(posStr: string, slot: string): boolean {
   if (slot === "UTIL" || slot === "CPT") return parts.length > 0;
   if (slot === "G") return parts.includes("PG") || parts.includes("SG");
   if (slot === "F") return parts.includes("SF") || parts.includes("PF");
+  // MLB pitcher slot accepts starters/relievers
+  if (slot === "P")
+    return parts.includes("P") || parts.includes("SP") || parts.includes("RP");
   return parts.includes(slot);
 }
 
@@ -298,9 +301,7 @@ export default function Home() {
   // FILTERED LIST
   const filtered = efficientPlayers
     .filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter((p) =>
-      !position ? true : p.position.split(/[\/,]/).includes(position)
-    )
+    .filter((p) => (!position ? true : canPlaySlot(p.position, position)))
     // replace mode: only slot-eligible, cap-fitting players not already rostered
     .filter((p) => {
       if (!replaceTarget) return true;
@@ -809,7 +810,7 @@ export default function Home() {
                 onClick={toggleTheme}
                 aria-label="Toggle dark / light mode"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                className="dk-theme-toggle h-8 w-8 flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-base hover:border-lime-500/60 transition-colors shrink-0"
+                className="dk-theme-toggle h-8 w-8 flex items-center justify-center rounded-full border border-zinc-500 bg-zinc-700 text-base hover:border-lime-400 transition-colors shrink-0"
               >
                 {theme === "dark" ? "☀️" : "🌙"}
               </button>
@@ -880,13 +881,13 @@ export default function Home() {
           </div>
         )}
 
-        {/* TEAM GENERATOR – now under header */}
+        {/* TEAM GENERATOR – segmented pill, like the header sport toggle */}
         <div className="flex flex-col items-center mb-6 px-4 space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 p-1 shadow-md">
             <Button
               onClick={generateTeam}
               disabled={teamLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-lime-600 px-6 py-2 text-sm font-semibold text-black shadow-md transition-all duration-150 hover:bg-lime-500 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-lime-600 px-6 py-2 text-sm font-semibold text-black transition-all duration-150 hover:bg-lime-500 active:scale-95 disabled:opacity-60 disabled:hover:bg-lime-600"
             >
               {teamLoading ? "Optimizing lineup…" : "Generate Team"}
             </Button>
@@ -894,7 +895,7 @@ export default function Home() {
             <Button
               onClick={startManualBuild}
               disabled={teamLoading}
-              className="inline-flex items-center justify-center rounded-full bg-zinc-800 border border-lime-600/40 px-5 py-2 text-sm font-semibold text-lime-300 shadow-md transition-all duration-150 hover:bg-zinc-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+              className="inline-flex items-center justify-center rounded-full bg-transparent px-5 py-2 text-sm font-semibold text-lime-300 transition-all duration-150 hover:bg-zinc-700 active:scale-95"
             >
               Build Manually
             </Button>
@@ -999,7 +1000,15 @@ export default function Home() {
                         <span className="font-semibold text-lime-300 mr-2">
                           {p.slot}
                         </span>
-                        {p.name}{" "}
+                        <span
+                          className={
+                            idx % 2 === 0
+                              ? "font-semibold text-white"
+                              : "font-semibold text-zinc-400"
+                          }
+                        >
+                          {p.name}
+                        </span>{" "}
                         <span className="text-xs text-zinc-400">
                           ({p.position}, {p.team})
                         </span>
