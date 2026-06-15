@@ -179,6 +179,64 @@ export default function Home() {
     index: 0,
   });
 
+  // ----- TEAM CONVEYOR: auto-scroll + click-drag -----
+  const conveyorRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({
+    down: false,
+    startX: 0,
+    startScroll: 0,
+    moved: false,
+  });
+  const autoPausedRef = useRef(false);
+
+  useEffect(() => {
+    const el = conveyorRef.current;
+    if (!el) return;
+    let raf = 0;
+    const step = () => {
+      if (!autoPausedRef.current && el.scrollWidth > el.clientWidth) {
+        el.scrollLeft += 0.5;
+        const half = el.scrollWidth / 2;
+        if (el.scrollLeft >= half) el.scrollLeft -= half; // seamless loop
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [team]);
+
+  const conveyorDown = (e: React.PointerEvent) => {
+    const el = conveyorRef.current;
+    if (!el) return;
+    dragRef.current = {
+      down: true,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+    };
+    autoPausedRef.current = true;
+  };
+  const conveyorMove = (e: React.PointerEvent) => {
+    const st = dragRef.current;
+    const el = conveyorRef.current;
+    if (!st.down || !el) return;
+    const dx = e.clientX - st.startX;
+    if (Math.abs(dx) > 4) st.moved = true;
+    el.scrollLeft = st.startScroll - dx;
+  };
+  const conveyorUp = () => {
+    dragRef.current.down = false;
+    autoPausedRef.current = false;
+  };
+  // swallow the click that follows a drag so cards don't flip after dragging
+  const conveyorClickCapture = (e: React.MouseEvent) => {
+    if (dragRef.current.moved) {
+      e.stopPropagation();
+      e.preventDefault();
+      dragRef.current.moved = false;
+    }
+  };
+
   // progress bar state
   const [progress, setProgress] = useState(0);
 
@@ -573,34 +631,31 @@ export default function Home() {
           background: transparent;
         }
 
-        /* Auto-scrolling team conveyor (left -> right, cyclic) */
-        @keyframes dk-conveyor-scroll {
-          0% {
-            transform: translateX(-50%);
-          }
-          100% {
-            transform: translateX(0);
-          }
-        }
-        .dk-conveyor-viewport {
-          overflow: hidden;
-          /* room so hover lift isn't clipped at the top */
-          padding-top: 10px;
-        }
-        .dk-conveyor-track {
+        /* Team conveyor: a real horizontal scroller (drag + auto-scroll).
+           Vertical padding leaves room for the card hover-lift and shadow. */
+        .dk-conveyor-scroller {
           display: flex;
           gap: 1rem;
-          width: max-content;
-          animation: dk-conveyor-scroll 40s linear infinite;
-          will-change: transform;
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 14px 4px 24px;
+          cursor: grab;
+          user-select: none;
+          scrollbar-width: thin;
+          scrollbar-color: #65a30d transparent;
         }
-        .dk-conveyor-viewport:hover .dk-conveyor-track {
-          animation-play-state: paused;
+        .dk-conveyor-scroller:active {
+          cursor: grabbing;
         }
-        @media (prefers-reduced-motion: reduce) {
-          .dk-conveyor-track {
-            animation: none;
-          }
+        .dk-conveyor-scroller::-webkit-scrollbar {
+          height: 6px;
+        }
+        .dk-conveyor-scroller::-webkit-scrollbar-thumb {
+          background: #3f6212;
+          border-radius: 9999px;
+        }
+        .dk-conveyor-scroller::-webkit-scrollbar-track {
+          background: transparent;
         }
       `}</style>
 
@@ -753,20 +808,28 @@ export default function Home() {
               Your Lineup
             </div>
             <div className="text-[11px] text-zinc-500 mb-3">
-              auto-scrolling · hover to pause · tap a card for last 5 games
+              auto-scrolling · click &amp; drag to browse · tap a card for last 5
+              games
             </div>
-            <div className="dk-conveyor-viewport">
-              <div className="dk-conveyor-track">
-                {/* duplicate the cards so the loop is seamless */}
-                {[...filledTeam, ...filledTeam].map((p, i) => (
-                  <div
-                    key={`conveyor-${lineupKey(p)}-${i}`}
-                    className="w-60 shrink-0"
-                  >
-                    <PlayerCard player={p} slot={p.slot} />
-                  </div>
-                ))}
-              </div>
+            <div
+              ref={conveyorRef}
+              className="dk-conveyor-scroller"
+              onPointerDown={conveyorDown}
+              onPointerMove={conveyorMove}
+              onPointerUp={conveyorUp}
+              onPointerLeave={conveyorUp}
+              onMouseEnter={() => (autoPausedRef.current = true)}
+              onMouseLeave={() => {
+                if (!dragRef.current.down) autoPausedRef.current = false;
+              }}
+              onClickCapture={conveyorClickCapture}
+            >
+              {/* duplicate the cards so the auto-scroll loop is seamless */}
+              {[...filledTeam, ...filledTeam].map((p, i) => (
+                <div key={`conveyor-${lineupKey(p)}-${i}`} className="w-60 shrink-0">
+                  <PlayerCard player={p} slot={p.slot} />
+                </div>
+              ))}
             </div>
           </div>
         )}
