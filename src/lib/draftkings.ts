@@ -6,6 +6,9 @@
 import demoData from "@/data/players-2025-11-14-last5.json";
 import { getHeadshotUrl } from "@/lib/nbaHeadshots";
 import { getLastFiveByPlayer, normalizeName } from "@/lib/nbaGameLogs";
+import { enrichMlbMatchups } from "@/lib/mlbStats";
+
+export type Sport = "NBA" | "MLB";
 
 export type Last5Game = {
   date: string;
@@ -36,10 +39,14 @@ export type PoolPlayer = {
   gameInfo: string;
   status: string;
   last5: Last5Game[];
+  // MLB only: opposing probable pitcher + this player's MLB id (for BvP)
+  mlbId?: number | null;
+  opposingPitcher?: { id: number; name: string } | null;
 };
 
 export type SlateInfo = {
   source: "live" | "demo";
+  sport: Sport;
   draftGroupId: number | null;
   gameType: "classic" | "showdown";
   gameTypeName: string;
@@ -52,7 +59,6 @@ export type PlayerPool = {
   slate: SlateInfo;
 };
 
-const LOBBY_URL = "https://www.draftkings.com/lobby/getcontests?sport=NBA";
 const DRAFTABLES_URL = (id: number) =>
   `https://api.draftkings.com/draftgroups/v1/draftgroups/${id}/draftables?format=json`;
 
@@ -62,16 +68,40 @@ const DK_HEADERS = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
 };
 
-// DraftKings game type ids (ContestTypeId on draft groups)
-const CLASSIC_NBA = 5;
-const SHOWDOWN_CAPTAIN = 81;
+// Per-sport DraftKings configuration. ContestTypeId is the field on lobby
+// draft groups; FPPG lives in draftStatAttributes under the given id.
+type SportConfig = {
+  lobbyUrl: string;
+  classicCtid: number;
+  showdownCtid: number;
+  fppgAttr: number;
+  classicName: string;
+  showdownName: string;
+};
 
-// FPPG lives in draftStatAttributes under this id
-const FPPG_ATTR_ID = 219;
+const SPORTS: Record<Sport, SportConfig> = {
+  NBA: {
+    lobbyUrl: "https://www.draftkings.com/lobby/getcontests?sport=NBA",
+    classicCtid: 5,
+    showdownCtid: 81,
+    fppgAttr: 219,
+    classicName: "NBA Classic",
+    showdownName: "NBA Showdown (Captain Mode)",
+  },
+  MLB: {
+    lobbyUrl: "https://www.draftkings.com/lobby/getcontests?sport=MLB",
+    classicCtid: 28,
+    showdownCtid: 114,
+    fppgAttr: 408,
+    classicName: "MLB Classic",
+    showdownName: "MLB Showdown (Captain Mode)",
+  },
+};
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-let cached: { pool: PlayerPool; at: number } | null = null;
+const cachedBySport: Partial<Record<Sport, { pool: PlayerPool; at: number }>> =
+  {};
 
 function formatGameInfo(name: string, startTimeIso: string | null): string {
   // Match the demo data format the UI parses: "NYK@SAS 06/13/2026 08:30PM ET"
@@ -99,9 +129,9 @@ function formatGameInfo(name: string, startTimeIso: string | null): string {
   return `${teams} ${date} ${time} ET`;
 }
 
-function parseFppg(attrs: any[]): number {
+function parseFppg(attrs: any[], attrId: number): number {
   if (!Array.isArray(attrs)) return 0;
-  const fppg = attrs.find((a) => a?.id === FPPG_ATTR_ID);
+  const fppg = attrs.find((a) => a?.id === attrId);
   const candidates = fppg ? [fppg] : attrs;
   for (const a of candidates) {
     const v = parseFloat(a?.sortValue ?? a?.value);
@@ -228,7 +258,11 @@ function isNbaGroup(g: DraftGroupChoice): boolean {
   return teams.every((t) => NBA_TEAMS.has(t));
 }
 
-function pickDraftGroup(lobby: any): DraftGroupChoice | null {
+function pickDraftGroup(
+  lobby: any,
+  sport: Sport,
+  cfg: SportConfig
+): DraftGroupChoice | null {
   const groups: DraftGroupChoice[] = (lobby?.DraftGroups || [])
     .map((g: any) => ({
       draftGroupId: g?.DraftGroupId,
@@ -240,9 +274,10 @@ function pickDraftGroup(lobby: any): DraftGroupChoice | null {
     .filter(
       (g: DraftGroupChoice) =>
         g.draftGroupId &&
-        (g.contestTypeId === CLASSIC_NBA ||
-          g.contestTypeId === SHOWDOWN_CAPTAIN) &&
-        isNbaGroup(g)
+        (g.contestTypeId === cfg.classicCtid ||
+          g.contestTypeId === cfg.showdownCtid) &&
+        // NBA shares its lobby with WNBA; filter by team codes. MLB doesn't.
+        (sport !== "NBA" || isNbaGroup(g))
     );
 
   if (!groups.length) return null;
@@ -250,7 +285,7 @@ function pickDraftGroup(lobby: any): DraftGroupChoice | null {
   // Prefer classic slates, then featured groups, then the earliest start
   groups.sort((a, b) => {
     if (a.contestTypeId !== b.contestTypeId) {
-      return a.contestTypeId === CLASSIC_NBA ? -1 : 1;
+      return a.contestTypeId === cfg.classicCtid ? -1 : 1;
     }
     const aFeat = a.tag === "Featured" ? 0 : 1;
     const bFeat = b.tag === "Featured" ? 0 : 1;
@@ -261,7 +296,12 @@ function pickDraftGroup(lobby: any): DraftGroupChoice | null {
   return groups[0];
 }
 
-function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
+function mapDraftables(
+  json: any,
+  group: DraftGroupChoice,
+  sport: Sport,
+  cfg: SportConfig
+): PlayerPool {
   const competitions = new Map<number, any>();
   for (const c of json?.competitions || []) {
     competitions.set(c?.competitionId, c);
@@ -281,7 +321,7 @@ function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
   const players: PoolPlayer[] = [];
   for (const d of byPlayer.values()) {
     const salary = Number(d.salary) || 0;
-    const fppg = parseFppg(d.draftStatAttributes);
+    const fppg = parseFppg(d.draftStatAttributes, cfg.fppgAttr);
     const comp = competitions.get(d?.competition?.competitionId);
     const startTime = comp?.startTime ?? d?.competition?.startTime ?? null;
     const compName = d?.competition?.name ?? "";
@@ -301,26 +341,30 @@ function mapDraftables(json: any, group: DraftGroupChoice): PlayerPool {
       image:
         d.playerImage160 ||
         d.playerImage50 ||
-        getHeadshotUrl(d.displayName) ||
-        null,
+        // NBA.com headshots only exist for NBA names
+        (sport === "NBA" ? getHeadshotUrl(d.displayName) : null),
       gameInfo: formatGameInfo(compName, startTime),
       status: d.status ?? "",
       last5: [],
+      mlbId: null,
+      opposingPitcher: null,
     });
   }
 
   players.sort((a, b) => b.salary - a.salary);
 
-  const isClassic = group.contestTypeId === CLASSIC_NBA;
+  const isClassic = group.contestTypeId === cfg.classicCtid;
+  const game = players[0]?.gameInfo ? ` — ${players[0].gameInfo}` : "";
   const slate: SlateInfo = {
     source: "live",
+    sport,
     draftGroupId: group.draftGroupId,
     gameType: isClassic ? "classic" : "showdown",
-    gameTypeName: isClassic ? "NBA Classic" : "NBA Showdown (Captain Mode)",
+    gameTypeName: isClassic ? cfg.classicName : cfg.showdownName,
     startDate: group.startDate || null,
     label: isClassic
-      ? "Live NBA Classic slate"
-      : `Live NBA Showdown${players[0]?.gameInfo ? ` — ${players[0].gameInfo}` : ""}`,
+      ? `Live ${cfg.classicName} slate`
+      : `Live ${cfg.showdownName}${game}`,
   };
 
   return { players, slate };
@@ -356,6 +400,7 @@ function demoPool(): PlayerPool {
     players,
     slate: {
       source: "demo",
+      sport: "NBA",
       draftGroupId: null,
       gameType: "classic",
       gameTypeName: "NBA Classic",
@@ -365,34 +410,58 @@ function demoPool(): PlayerPool {
   };
 }
 
-export async function getPlayerPool(): Promise<PlayerPool> {
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return cached.pool;
+export async function getPlayerPool(sport: Sport = "NBA"): Promise<PlayerPool> {
+  const hit = cachedBySport[sport];
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    return hit.pool;
   }
 
+  const cfg = SPORTS[sport];
+
   try {
-    const lobby = await fetchJson(LOBBY_URL);
-    const group = pickDraftGroup(lobby);
-    if (!group) throw new Error("No NBA draft groups in the lobby");
+    const lobby = await fetchJson(cfg.lobbyUrl);
+    const group = pickDraftGroup(lobby, sport, cfg);
+    if (!group) throw new Error(`No ${sport} draft groups in the lobby`);
 
     const draftables = await fetchJson(DRAFTABLES_URL(group.draftGroupId));
-    const pool = mapDraftables(draftables, group);
+    const pool = mapDraftables(draftables, group, sport, cfg);
     if (!pool.players.length) throw new Error("Slate returned no players");
 
-    // Recent form is an enhancement — never let it break live data
+    // Stat enrichment is an enhancement — never let it break live data
     try {
-      await enrichWithRecentForm(pool.players);
+      if (sport === "NBA") {
+        await enrichWithRecentForm(pool.players);
+      } else if (sport === "MLB") {
+        await enrichMlbMatchups(pool.players, pool.slate.startDate);
+      }
     } catch (err) {
-      console.error("[draftkings] recent-form enrichment failed:", err);
+      console.error(`[draftkings] ${sport} enrichment failed:`, err);
     }
 
-    cached = { pool, at: Date.now() };
+    cachedBySport[sport] = { pool, at: Date.now() };
     return pool;
   } catch (err) {
-    console.error("[draftkings] live fetch failed, using demo data:", err);
-    const pool = demoPool();
-    // Cache the fallback briefly too, so a DK outage doesn't hammer them
-    cached = { pool, at: Date.now() };
+    console.error(
+      `[draftkings] ${sport} live fetch failed, using demo data:`,
+      err
+    );
+    // Only NBA has a bundled demo fallback; MLB surfaces an empty pool.
+    const pool =
+      sport === "NBA"
+        ? demoPool()
+        : {
+            players: [],
+            slate: {
+              source: "demo" as const,
+              sport: "MLB" as const,
+              draftGroupId: null,
+              gameType: "classic" as const,
+              gameTypeName: "MLB Classic",
+              startDate: null,
+              label: "No live MLB slate available right now",
+            },
+          };
+    cachedBySport[sport] = { pool, at: Date.now() };
     return pool;
   }
 }

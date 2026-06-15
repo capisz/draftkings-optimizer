@@ -8,8 +8,11 @@ export interface EfficientPlayer extends PlayerOut {
   last5: Last5Game[];
 }
 
+export type Sport = "NBA" | "MLB";
+
 export interface SlateInfo {
   source: "live" | "demo";
+  sport: Sport;
   draftGroupId: number | null;
   gameType: "classic" | "showdown";
   gameTypeName: string;
@@ -23,7 +26,7 @@ interface ApiResponse {
   slate?: SlateInfo;
 }
 
-export function useEfficientPlayers() {
+export function useEfficientPlayers(sport: Sport = "NBA") {
   const [efficientPlayers, setEfficientPlayers] = useState<EfficientPlayer[]>([]);
   const [slate, setSlate] = useState<SlateInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +40,7 @@ export function useEfficientPlayers() {
         setIsLoading(true);
         setError(null);
 
-        const res = await fetch("/api/players");
+        const res = await fetch(`/api/players?sport=${sport}`);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -68,7 +71,7 @@ export function useEfficientPlayers() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sport]);
 
   return { efficientPlayers, slate, isLoading, error };
 }

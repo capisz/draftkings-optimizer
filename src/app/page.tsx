@@ -125,7 +125,9 @@ function lineupTotals(lineup: LineupPlayer[], salaryCap: number): LineupTotals {
 }
 
 export default function Home() {
-  const { efficientPlayers, slate, isLoading, error } = useEfficientPlayers();
+  const [sport, setSport] = useState<"NBA" | "MLB">("NBA");
+  const { efficientPlayers, slate, isLoading, error } =
+    useEfficientPlayers(sport);
 
   const [visibleCards, setVisibleCards] = useState(0);
   const [pageCount, setPageCount] = useState(1);
@@ -170,6 +172,33 @@ export default function Home() {
       } catch {}
       return next;
     });
+  };
+
+  // restore saved sport on mount
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("sport") as "NBA" | "MLB" | null)
+        : null;
+    if (saved === "MLB") setSport("MLB");
+  }, []);
+
+  const switchSport = (next: "NBA" | "MLB") => {
+    if (next === sport) return;
+    setSport(next);
+    try {
+      localStorage.setItem("sport", next);
+    } catch {}
+    // reset everything tied to the previous slate
+    setTeam([]);
+    setTeamMeta(null);
+    setSelectedKeys([]);
+    setAiResult(null);
+    setAiError(null);
+    setReplaceTarget(null);
+    setPosition(null);
+    setSearchTerm("");
+    setPageCount(1);
   };
 
   // Rotation cursor per slot, so pressing AI again on the same row cycles to
@@ -406,7 +435,7 @@ export default function Home() {
       setAiResult(null);
       setAiError(null);
 
-      const res = await fetch("/api/generate-lineup", {
+      const res = await fetch(`/api/generate-lineup?sport=${sport}`, {
         cache: "no-store",
       });
 
@@ -447,7 +476,15 @@ export default function Home() {
   const slots =
     slate?.gameType === "showdown"
       ? ["CPT", "UTIL", "UTIL", "UTIL", "UTIL", "UTIL"]
-      : ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+      : sport === "MLB"
+        ? ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"]
+        : ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+
+  // Position filter chips for the player pool
+  const positionChips =
+    sport === "MLB"
+      ? ["P", "C", "1B", "2B", "3B", "SS", "OF"]
+      : ["PG", "SG", "SF", "PF", "C"];
 
   // ----- MANUAL BUILD -----
   const startManualBuild = () => {
@@ -512,11 +549,46 @@ export default function Home() {
     }
   };
 
+  // ----- MLB AI: batter-vs-pitcher matchup recommendation (server) -----
+  const aiMatchupReplace = async (p: LineupPlayer) => {
+    setSelectedKeys([lineupKey(p)]);
+    setReplaceTarget(null);
+    setAiError(null);
+    setAiResult(null);
+    setAiLoading(true);
+
+    const key = lineupKey(p);
+    const rot = aiRotationRef.current;
+    const index = rot.key === key ? rot.index + 1 : 0;
+    aiRotationRef.current = { key, index };
+
+    try {
+      const res = await fetch("/api/mlb/matchup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineup: team, selectedKey: key, index }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Matchup analysis failed");
+      setAiResult(json as AiSwapResponse);
+    } catch (e: any) {
+      setAiError(e.message ?? "Matchup analysis failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // ----- AI PICKS A REPLACEMENT FOR ONE SLOT (local model, no API key) -----
   const aiReplaceSlot = (p: LineupPlayer) => {
     if (!p.id) {
       // empty manual slot — fall back to the grid picker
       setReplaceTarget(p);
+      return;
+    }
+
+    // MLB uses the batter-vs-pitcher matchup service
+    if (sport === "MLB") {
+      aiMatchupReplace(p);
       return;
     }
 
@@ -680,6 +752,22 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
+              {/* SPORT TOGGLE */}
+              <div className="inline-flex rounded-full border border-zinc-700 bg-zinc-800 p-0.5 text-xs font-semibold shrink-0">
+                {(["NBA", "MLB"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => switchSport(s)}
+                    className={`px-3 py-1 rounded-full transition-colors ${
+                      sport === s
+                        ? "bg-lime-500 text-black"
+                        : "text-zinc-300 hover:text-white"
+                    }`}
+                  >
+                    {s === "NBA" ? "🏀 NBA" : "⚾ MLB"}
+                  </button>
+                ))}
+              </div>
               {slate && (
                 <span
                   className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 ${
@@ -1124,7 +1212,7 @@ export default function Home() {
               <span className="text-xs font-semibold text-lime-400 uppercase tracking-wide mr-1">
                 Player Pool
               </span>
-              {["PG", "SG", "SF", "PF", "C"].map((pos) => (
+              {positionChips.map((pos) => (
                 <button
                   key={pos}
                   onClick={() => setPosition(position === pos ? null : pos)}

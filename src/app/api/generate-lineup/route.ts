@@ -1,14 +1,16 @@
 // src/app/api/generate-lineup/route.ts
 import { NextResponse } from "next/server";
-import { getPlayerPool } from "@/lib/draftkings";
+import { getPlayerPool, type Sport } from "@/lib/draftkings";
 import { buildLineup } from "@/lib/optimizer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const { players, slate } = await getPlayerPool();
+    const sport: Sport =
+      new URL(req.url).searchParams.get("sport") === "MLB" ? "MLB" : "NBA";
+    const { players, slate } = await getPlayerPool(sport);
 
     const result = buildLineup(players, slate);
     if (!result) {

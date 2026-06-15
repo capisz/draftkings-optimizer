@@ -27,6 +27,20 @@ export const SHOWDOWN_SLOTS = [
   "UTIL",
 ] as const;
 
+// DraftKings MLB Classic roster
+export const MLB_CLASSIC_SLOTS = [
+  "P",
+  "P",
+  "C",
+  "1B",
+  "2B",
+  "3B",
+  "SS",
+  "OF",
+  "OF",
+  "OF",
+] as const;
+
 export type LineupPlayer = PoolPlayer & {
   slot: string;
   // CPT rows carry 1.5x salary/points so totals add up at face value
@@ -44,7 +58,8 @@ export type LineupResult = {
 };
 
 export function slotsForSlate(slate: SlateInfo): readonly string[] {
-  return slate.gameType === "showdown" ? SHOWDOWN_SLOTS : CLASSIC_SLOTS;
+  if (slate.gameType === "showdown") return SHOWDOWN_SLOTS;
+  return slate.sport === "MLB" ? MLB_CLASSIC_SLOTS : CLASSIC_SLOTS;
 }
 
 export function parsePosition(pos: string): string[] {
@@ -57,8 +72,12 @@ export function parsePosition(pos: string): string[] {
 export function canPlay(posStr: string, slot: string): boolean {
   const parts = parsePosition(posStr);
   if (slot === "UTIL" || slot === "CPT") return parts.length > 0;
+  // NBA composite slots
   if (slot === "G") return parts.includes("PG") || parts.includes("SG");
   if (slot === "F") return parts.includes("SF") || parts.includes("PF");
+  // MLB pitcher slot accepts SP/RP (or generic P)
+  if (slot === "P")
+    return parts.includes("P") || parts.includes("SP") || parts.includes("RP");
   return parts.includes(slot);
 }
 
@@ -103,20 +122,37 @@ function totalsOf(lineup: LineupPlayer[]): LineupResult {
   };
 }
 
-function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
+function buildClassic(
+  players: PoolPlayer[],
+  slots: readonly string[]
+): LineupPlayer[] | null {
   const ranked = players
     .map((p) => ({ ...p, _score: selectionScore(p) }))
     .sort((a, b) => b._score - a._score);
 
-  const pool = ranked.slice(0, 60);
-  const MAX_PER_SLOT = 12;
+  const MAX_PER_SLOT = 14;
 
-  const candidatesBySlot = CLASSIC_SLOTS.map((slot) =>
-    pool.filter((p) => canPlay(p.position, slot)).slice(0, MAX_PER_SLOT)
+  // Per-slot candidates drawn from the FULL ranked pool (not a global top-N),
+  // so low-scoring positions like catcher always have options.
+  const candidatesBySlot = slots.map((slot) =>
+    ranked.filter((p) => canPlay(p.position, slot)).slice(0, MAX_PER_SLOT)
+  );
+
+  // Cheapest eligible salary for each slot — used to reserve cap for the
+  // slots still to come so the search/greedy never paints into a corner.
+  const minSalaryForSlot = slots.map((slot) => {
+    const elig = ranked.filter((p) => canPlay(p.position, slot));
+    return elig.length ? Math.min(...elig.map((p) => p.salary)) : Infinity;
+  });
+  const reserveAfter = slots.map((_, i) =>
+    minSalaryForSlot.slice(i + 1).reduce((s, v) => s + v, 0)
   );
 
   let bestLineup: LineupPlayer[] | null = null;
   let bestScore = -Infinity;
+  // bound the search for the deeper MLB roster so it stays fast
+  let nodes = 0;
+  const NODE_BUDGET = 3_000_000;
 
   function search(
     slotIndex: number,
@@ -125,7 +161,8 @@ function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
     score: number,
     lineup: LineupPlayer[]
   ) {
-    if (slotIndex === CLASSIC_SLOTS.length) {
+    if (nodes++ > NODE_BUDGET) return;
+    if (slotIndex === slots.length) {
       if (salary <= SALARY_CAP && score > bestScore) {
         bestScore = score;
         bestLineup = [...lineup];
@@ -133,11 +170,12 @@ function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
       return;
     }
 
-    const slot = CLASSIC_SLOTS[slotIndex];
+    const slot = slots[slotIndex];
     for (const p of candidatesBySlot[slotIndex]) {
       if (usedIds.has(p.id)) continue;
       const newSalary = salary + p.salary;
-      if (newSalary > SALARY_CAP) continue;
+      // leave enough cap for the cheapest fills of the remaining slots
+      if (newSalary + reserveAfter[slotIndex] > SALARY_CAP) continue;
 
       usedIds.add(p.id);
       lineup.push(asLineupPlayer(p, slot));
@@ -151,21 +189,25 @@ function buildClassic(players: PoolPlayer[]): LineupPlayer[] | null {
 
   if (bestLineup) return bestLineup;
 
-  // Greedy fallback
+  // Salary-aware greedy fallback: best score per slot that still leaves the
+  // cheapest fills affordable for the remaining slots.
   const used = new Set<string>();
   const greedy: LineupPlayer[] = [];
   let salary = 0;
-  for (let i = 0; i < CLASSIC_SLOTS.length; i++) {
+  for (let i = 0; i < slots.length; i++) {
+    let chosen: (PoolPlayer & { _score: number }) | null = null;
     for (const p of candidatesBySlot[i]) {
       if (used.has(p.id)) continue;
-      if (salary + p.salary > SALARY_CAP) continue;
-      used.add(p.id);
-      salary += p.salary;
-      greedy.push(asLineupPlayer(p, CLASSIC_SLOTS[i]));
+      if (salary + p.salary + reserveAfter[i] > SALARY_CAP) continue;
+      chosen = p;
       break;
     }
+    if (!chosen) return null;
+    used.add(chosen.id);
+    salary += chosen.salary;
+    greedy.push(asLineupPlayer(chosen, slots[i]));
   }
-  return greedy.length === CLASSIC_SLOTS.length ? greedy : null;
+  return greedy.length === slots.length ? greedy : null;
 }
 
 function buildShowdown(players: PoolPlayer[]): LineupPlayer[] | null {
@@ -235,7 +277,7 @@ export function buildLineup(
   const lineup =
     slate.gameType === "showdown"
       ? buildShowdown(eligible)
-      : buildClassic(eligible);
+      : buildClassic(eligible, slotsForSlate(slate));
 
   return lineup ? totalsOf(lineup) : null;
 }
