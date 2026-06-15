@@ -74,15 +74,17 @@ export function PlayerCard({
 
   return (
     <div
-      className={`h-80 rounded-3xl bg-[#191b20] p-4 pt-5 flex flex-col justify-between cursor-pointer border shadow-lg shadow-black/40 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-lime-900/20 relative overflow-hidden ${
+      className={`group dk-card isolate h-80 rounded-3xl bg-[#191b20] p-4 pt-5 flex flex-col justify-between cursor-pointer border shadow-lg shadow-black/40 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-lime-900/30 relative overflow-hidden ${
         onSelect
           ? "border-sky-500/60 hover:border-sky-400 ring-1 ring-sky-500/30"
-          : "border-zinc-800/80 hover:border-lime-500/50"
+          : "border-zinc-800/80 hover:border-lime-500/60"
       }`}
       onClick={handleToggle}
     >
-      {/* green accent header bar — clean separation between cards in the grid */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-lime-500 via-emerald-400 to-lime-500" />
+      {/* green accent header bar — flows / comes alive on hover */}
+      <div className="dk-card-accent pointer-events-none absolute inset-x-0 top-0 h-1.5" />
+      {/* soft green sheen that fades in on hover */}
+      <div className="dk-card-sheen pointer-events-none absolute inset-0 -z-10" />
 
       {onSelect && (
         <span className="absolute top-2 right-3 px-2 py-0.5 rounded-full bg-sky-600 text-white text-[9px] font-bold uppercase tracking-wide">

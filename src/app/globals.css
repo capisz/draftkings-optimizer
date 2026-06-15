@@ -100,6 +100,51 @@ button {
 }
 
 /* ============================================================
+   PLAYER CARD — "alive" hover treatment
+============================================================ */
+.dk-card-accent {
+  background-image: linear-gradient(
+    90deg,
+    #65a30d,
+    #22c55e,
+    #2dd4bf,
+    #22c55e,
+    #65a30d
+  );
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  transition: filter 0.3s ease;
+}
+.dk-card:hover .dk-card-accent {
+  animation: dk-accent-flow 1.6s linear infinite;
+  filter: brightness(1.15) saturate(1.25);
+}
+@keyframes dk-accent-flow {
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+/* soft green glow that breathes in from the top on hover */
+.dk-card-sheen {
+  background: radial-gradient(
+    120% 85% at 50% 0%,
+    rgba(101, 163, 13, 0.16),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.dk-card:hover .dk-card-sheen {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dk-card:hover .dk-card-accent {
+    animation: none;
+  }
+}
+
+/* ============================================================
    LIGHT MODE
    Dark is the default (utilities authored with dark values).
    Adding `light` to <html> flips the palette via overrides so
@@ -132,32 +177,33 @@ html.light .to-black {
 html.light .bg-zinc-900,
 html.light .bg-zinc-900\/80,
 html.light .bg-zinc-950\/70 {
-  background-color: #f1f5f9;
+  background-color: #e7edf3;
 }
 /* secondary surfaces (pills, chips, sub-cards) — a touch darker for contrast */
 html.light .bg-zinc-900\/70,
 html.light .bg-zinc-800,
 html.light .bg-zinc-800\/70 {
-  background-color: #e2e8f0;
+  background-color: #dde4ec;
 }
 html.light .bg-zinc-800\/60:hover,
 html.light .hover\:bg-zinc-800\/60:hover {
-  background-color: #d9e0ea;
+  background-color: #d3dce6;
 }
 html.light .bg-zinc-700,
 html.light .bg-zinc-600 {
-  background-color: #cbd5e1;
+  background-color: #c7d2de;
 }
 html.light .hover\:bg-zinc-700:hover,
 html.light .hover\:bg-zinc-600:hover {
-  background-color: #b6c2d2;
+  background-color: #b3c0cf;
 }
 html.light .bg-black {
   background-color: #cbd5e1;
 }
-/* player cards (arbitrary value bg-[#191b20]) */
+/* player cards (arbitrary value bg-[#191b20]) — soft sage-green tint so they
+   read as their own surface and carry the app's green theme, not stark white */
 html.light .bg-\[\#191b20\] {
-  background-color: #f1f5f9;
+  background-color: #e4ece4;
 }
 
 /* text */
