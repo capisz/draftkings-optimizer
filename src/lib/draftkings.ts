@@ -39,6 +39,8 @@ export type PoolPlayer = {
   gameInfo: string;
   status: string;
   last5: Last5Game[];
+  // DraftKings' own player id (playerDkId) — used for the CSV import string
+  dkId?: string | null;
   // MLB only: opposing probable pitcher + this player's MLB id (for BvP)
   mlbId?: number | null;
   opposingPitcher?: { id: number; name: string } | null;
@@ -361,6 +363,7 @@ function mapDraftables(
 
     players.push({
       id: String(d.playerId),
+      dkId: d.playerDkId != null ? String(d.playerDkId) : String(d.playerId),
       name: d.displayName ?? `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim(),
       position: d.position ?? "",
       team: d.teamAbbreviation ?? "",
@@ -409,6 +412,7 @@ function demoPool(): PlayerPool {
     const name = (p.name || "").trim();
     const player: PoolPlayer = {
       id: String(p.id),
+      dkId: String(p.id),
       name,
       position: p.position ?? "",
       team: p.team ?? "",

@@ -127,6 +127,50 @@ function lineupTotals(lineup: LineupPlayer[], salaryCap: number): LineupTotals {
   };
 }
 
+// Roster slots for a slate (sport + contest type)
+function slotsFor(sport: "NBA" | "MLB", gameType?: string): string[] {
+  if (gameType === "showdown")
+    return ["CPT", "UTIL", "UTIL", "UTIL", "UTIL", "UTIL"];
+  return sport === "MLB"
+    ? ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"]
+    : ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+}
+
+// An empty manual lineup (placeholder rows with empty ids) for the given slots
+function emptyLineup(slots: string[]): LineupPlayer[] {
+  return slots.map((slot) => ({
+    id: "",
+    dkId: "",
+    slot,
+    name: "",
+    position: "",
+    team: "",
+    salary: 0,
+    fppg: 0,
+    avgDK: 0,
+    efficiency: 0,
+    valueDelta: null,
+    tentative: false,
+    tentativeReason: null,
+    image: null,
+    gameInfo: "",
+    status: "",
+    last5: [],
+    baseSalary: 0,
+    baseAvgDK: 0,
+  }));
+}
+
+// DraftKings CSV import string: slot header row + a `Name (dkId)` row
+function dkImportCsv(team: LineupPlayer[]): string {
+  const filled = team.filter((p) => p.id);
+  const header = filled.map((p) => p.slot).join(",");
+  const row = filled
+    .map((p) => `${p.name} (${p.dkId ?? p.id})`)
+    .join(",");
+  return `${header}\n${row}`;
+}
+
 function EmptyLineupSlotCard({
   slot,
   selected,
@@ -205,6 +249,11 @@ export default function Home() {
   // manual replace mode: which lineup spot is being replaced
   const [replaceTarget, setReplaceTarget] = useState<LineupPlayer | null>(null);
 
+  // build mode: "manual" (default) or "generate" — drives the segmented toggle
+  const [buildMode, setBuildMode] = useState<"manual" | "generate">("manual");
+  // clipboard confirmation for the DraftKings import button
+  const [copied, setCopied] = useState(false);
+
   // restore saved sport on mount
   useEffect(() => {
     const saved =
@@ -230,6 +279,34 @@ export default function Home() {
     setPosition(null);
     setSearchTerm("");
     setPageCount(1);
+    setBuildMode("manual"); // back to the default mode for the new slate
+  };
+
+  const copyDkImport = async () => {
+    const text = dkImportCsv(team);
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // fallback for browsers/contexts without the async clipboard API
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        ok = false;
+      }
+    }
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
   };
 
   // Rotation cursor per slot, so pressing AI again on the same row cycles to
@@ -264,6 +341,34 @@ export default function Home() {
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [team]);
+
+  // Default to Build Manually: once the slate has loaded, stand up an empty
+  // lineup to fill (until the user opts into Generate Team).
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !error &&
+      buildMode === "manual" &&
+      team.length === 0 &&
+      efficientPlayers.length > 0
+    ) {
+      setTeam(emptyLineup(slotsFor(sport, slate?.gameType)));
+      setTeamMeta({
+        totalSalary: 0,
+        totalAvgDK: 0,
+        totalScore: 0,
+        salaryCap: 50000,
+      });
+    }
+  }, [
+    isLoading,
+    error,
+    buildMode,
+    team.length,
+    efficientPlayers.length,
+    sport,
+    slate?.gameType,
+  ]);
 
   const conveyorDown = (e: React.PointerEvent) => {
     const el = conveyorRef.current;
@@ -456,6 +561,7 @@ export default function Home() {
   // TEAM GENERATION API CALL
   const generateTeam = async () => {
     try {
+      setBuildMode("generate");
       setTeamLoading(true);
       setTeamMeta(null);
       setTeam([]);
@@ -502,12 +608,7 @@ export default function Home() {
   const realSwaps = aiResult?.suggestions.filter((s) => !s.kept) ?? [];
 
   // Roster slots for the current slate
-  const slots =
-    slate?.gameType === "showdown"
-      ? ["CPT", "UTIL", "UTIL", "UTIL", "UTIL", "UTIL"]
-      : sport === "MLB"
-        ? ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"]
-        : ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+  const slots = slotsFor(sport, slate?.gameType);
 
   // Position filter chips for the player pool
   const positionChips =
@@ -517,28 +618,8 @@ export default function Home() {
 
   // ----- MANUAL BUILD -----
   const startManualBuild = () => {
-    const empty: LineupPlayer[] = slots.map((slot) => ({
-      // placeholder rows carry an empty id; filled when a player is chosen
-      id: "",
-      slot,
-      name: "",
-      position: "",
-      team: "",
-      salary: 0,
-      fppg: 0,
-      avgDK: 0,
-      efficiency: 0,
-      valueDelta: null,
-      tentative: false,
-      tentativeReason: null,
-      image: null,
-      gameInfo: "",
-      status: "",
-      last5: [],
-      baseSalary: 0,
-      baseAvgDK: 0,
-    }));
-    setTeam(empty);
+    setBuildMode("manual");
+    setTeam(emptyLineup(slots));
     setTeamMeta({
       totalSalary: 0,
       totalAvgDK: 0,
@@ -905,19 +986,27 @@ export default function Home() {
         <div className="flex flex-col items-center mb-6 px-4 space-y-3">
           <div className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 p-1 shadow-md">
             <Button
-              onClick={generateTeam}
+              onClick={startManualBuild}
               disabled={teamLoading}
-              className="dk-generate-team-button inline-flex items-center justify-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60"
+              className={`inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 ${
+                buildMode === "manual"
+                  ? "bg-lime-600 text-black hover:bg-lime-500"
+                  : "bg-transparent text-zinc-300 hover:bg-zinc-700"
+              }`}
             >
-              {teamLoading ? "Optimizing lineup…" : "Generate Team"}
+              Build Manually
             </Button>
 
             <Button
-              onClick={startManualBuild}
+              onClick={generateTeam}
               disabled={teamLoading}
-              className="inline-flex items-center justify-center rounded-full bg-transparent px-5 py-2 text-sm font-semibold text-lime-300 transition-all duration-150 hover:bg-zinc-700 active:scale-95"
+              className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60 ${
+                buildMode === "generate"
+                  ? "bg-lime-600 text-black hover:bg-lime-500"
+                  : "bg-transparent text-zinc-300 hover:bg-zinc-700"
+              }`}
             >
-              Build Manually
+              {teamLoading ? "Optimizing…" : "Generate Team"}
             </Button>
           </div>
 
@@ -975,6 +1064,21 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            {/* IMPORT TO DRAFTKINGS */}
+            {!hasEmptySlots && (
+              <div className="mt-3 flex items-center gap-3">
+                <Button
+                  onClick={copyDkImport}
+                  className="inline-flex items-center gap-2 rounded-full bg-zinc-800 border border-lime-600/50 px-4 py-2 text-xs font-semibold text-lime-300 hover:bg-zinc-700 transition-colors"
+                >
+                  {copied ? "✓ Copied!" : "⬇ Copy for DraftKings"}
+                </Button>
+                <span className="text-[10px] text-zinc-500">
+                  CSV (slots + Name/ID) — paste into a DraftKings lineup upload
+                </span>
+              </div>
+            )}
           </div>
         )}
 
