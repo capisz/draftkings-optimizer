@@ -150,60 +150,61 @@ button {
    Adding `light` to <html> flips the palette via overrides so
    the component markup doesn't need per-class dark: variants.
 ============================================================ */
-/* A soft slate-grey light theme (not stark white). Palette based on
-   Tailwind slate: page ~slate-300, panels ~slate-100, accents slate-200. */
+/* A soft sage / green-slate light theme — deliberately tinted so light mode
+   reads as simply "lighter than dark", never stark white. */
 html.light,
 html.light body {
-  background-color: #cbd5e1;
+  background-color: #c1d0c4;
   color: #0f172a;
 }
 
-/* page background gradient (slate-200 -> slate-300 -> slate-400-ish) */
+/* page background gradient — a soft sage/green-slate, deliberately tinted so
+   light mode reads as "lighter than dark" rather than white */
 html.light .from-zinc-800 {
-  --tw-gradient-from: #dbe2ea var(--tw-gradient-from-position);
-  --tw-gradient-to: rgb(219 226 234 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-from: #cbd8cc var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(203 216 204 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 html.light .via-zinc-900 {
-  --tw-gradient-to: rgb(203 213 225 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), #cbd5e1 var(--tw-gradient-via-position),
+  --tw-gradient-to: rgb(193 208 196 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #c1d0c4 var(--tw-gradient-via-position),
     var(--tw-gradient-to);
 }
 html.light .to-black {
-  --tw-gradient-to: #b6c2d2 var(--tw-gradient-to-position);
+  --tw-gradient-to: #b1c2b4 var(--tw-gradient-to-position);
 }
 
-/* primary panels — light slate, clearly lifted off the page but not white */
+/* primary panels — light sage, clearly tinted (not white) */
 html.light .bg-zinc-900,
 html.light .bg-zinc-900\/80,
 html.light .bg-zinc-950\/70 {
-  background-color: #e7edf3;
+  background-color: #d4e0d6;
 }
-/* secondary surfaces (pills, chips, sub-cards) — a touch darker for contrast */
+/* secondary surfaces (pills, chips, sub-cards) — a touch deeper for contrast */
 html.light .bg-zinc-900\/70,
 html.light .bg-zinc-800,
 html.light .bg-zinc-800\/70 {
-  background-color: #dde4ec;
+  background-color: #c7d5c9;
 }
 html.light .bg-zinc-800\/60:hover,
 html.light .hover\:bg-zinc-800\/60:hover {
-  background-color: #d3dce6;
+  background-color: #bccdbf;
 }
 html.light .bg-zinc-700,
 html.light .bg-zinc-600 {
-  background-color: #c7d2de;
+  background-color: #b3c5b6;
 }
 html.light .hover\:bg-zinc-700:hover,
 html.light .hover\:bg-zinc-600:hover {
-  background-color: #b3c0cf;
+  background-color: #a2b7a6;
 }
 html.light .bg-black {
-  background-color: #cbd5e1;
+  background-color: #c1d0c4;
 }
-/* player cards (arbitrary value bg-[#191b20]) — soft sage-green tint so they
-   read as their own surface and carry the app's green theme, not stark white */
+/* player cards (arbitrary value bg-[#191b20]) — a hair lighter than the panels
+   so cards still pop, but firmly in the sage family, never white */
 html.light .bg-\[\#191b20\] {
-  background-color: #e4ece4;
+  background-color: #dde8de;
 }
 
 /* text */
@@ -233,7 +234,7 @@ html.light .border-zinc-800\/80,
 html.light .border-zinc-700,
 html.light .border-zinc-600,
 html.light .border-b-zinc-700 {
-  border-color: #cbd5e1;
+  border-color: #abbfae;
 }
 
 /* Accent badges: in dark mode they use dark translucent backgrounds with
