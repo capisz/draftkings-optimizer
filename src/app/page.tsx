@@ -611,7 +611,18 @@ export default function Home() {
     setAiResult(null);
   };
 
-  const realSwaps = aiResult?.suggestions.filter((s) => !s.kept) ?? [];
+  const dismissAiRecommendation = () => {
+    setSelectedKeys([]);
+    setAiResult(null);
+  };
+
+  const activeAiSuggestion = aiResult?.suggestions[0] ?? null;
+  const activeAiSalaryDelta = activeAiSuggestion
+    ? activeAiSuggestion.in.salary - activeAiSuggestion.out.salary
+    : 0;
+  const activeAiDkDelta = activeAiSuggestion
+    ? activeAiSuggestion.in.avgDK - activeAiSuggestion.out.avgDK
+    : 0;
 
   // Roster slots for the current slate
   const slots = slotsFor(sport, slate?.gameType);
@@ -1270,95 +1281,6 @@ export default function Home() {
             )}
             {aiError && (
               <div className="mt-4 text-red-400 text-xs">{aiError}</div>
-            )}
-
-            {/* AI SUGGESTIONS */}
-            {aiResult && (
-              <div className="mt-4 bg-zinc-800/70 rounded-lg p-4 text-left">
-                <div className="text-xs font-semibold text-sky-300 uppercase tracking-wide mb-2">
-                  AI Suggestions
-                </div>
-
-                <p className="text-xs text-zinc-300 mb-3">{aiResult.summary}</p>
-
-                <div className="space-y-3">
-                  {aiResult.suggestions.map((s, i) => (
-                    <div
-                      key={`${s.slot}-${i}`}
-                      className="bg-zinc-900/70 rounded-md p-3"
-                    >
-                      <div className="flex items-center justify-between text-sm">
-                        <span>
-                          <span className="font-semibold text-lime-300 mr-2">
-                            {s.slot}
-                          </span>
-                          {s.kept ? (
-                            <span className="text-zinc-300">
-                              Keep {s.out.name}
-                            </span>
-                          ) : (
-                            <span>
-                              <span className="text-zinc-400 line-through mr-1">
-                                {s.out.name}
-                              </span>
-                              <span className="text-zinc-500 mx-1">→</span>
-                              <span className="text-white font-semibold">
-                                {s.in.name}
-                              </span>
-                            </span>
-                          )}
-                        </span>
-                        {!s.kept && (
-                          <span className="text-xs text-right">
-                            <span
-                              className={
-                                s.in.salary - s.out.salary > 0
-                                  ? "text-red-400"
-                                  : "text-lime-400"
-                              }
-                            >
-                              {s.in.salary - s.out.salary >= 0 ? "+" : "−"}$
-                              {Math.abs(
-                                s.in.salary - s.out.salary
-                              ).toLocaleString()}
-                            </span>{" "}
-                            <span className="text-sky-400">
-                              {(s.in.avgDK - s.out.avgDK >= 0 ? "+" : "") +
-                                (s.in.avgDK - s.out.avgDK).toFixed(1)}{" "}
-                              DK
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-zinc-400 mt-1">
-                        {s.reasoning}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {realSwaps.length > 0 ? (
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-[11px] text-zinc-400">
-                      New total: $
-                      {aiResult.newTotals.totalSalary.toLocaleString()} ·{" "}
-                      {aiResult.newTotals.totalAvgDK.toFixed(1)} DK pts
-                    </div>
-                    <Button
-                      onClick={applyAiLineup}
-                      className="bg-lime-600 hover:bg-lime-500 text-black font-semibold"
-                    >
-                      Apply {realSwaps.length} swap
-                      {realSwaps.length > 1 ? "s" : ""}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="mt-3 text-[11px] text-zinc-400">
-                    The AI thinks your highlighted picks are already the best
-                    options.
-                  </div>
-                )}
-              </div>
             )}
 
             <Button
