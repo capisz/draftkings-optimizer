@@ -330,10 +330,16 @@ export default function Home() {
     const el = conveyorRef.current;
     if (!el) return;
     let raf = 0;
-    const step = () => {
+    let last = performance.now();
+    const speedPxPerSecond = 32;
+
+    const step = (now: number) => {
+      const elapsed = Math.min(now - last, 64);
+      last = now;
+
       if (!autoPausedRef.current && el.scrollWidth > el.clientWidth) {
-        el.scrollLeft += 0.5;
         const half = el.scrollWidth / 2;
+        el.scrollLeft += (speedPxPerSecond * elapsed) / 1000;
         if (el.scrollLeft >= half) el.scrollLeft -= half; // seamless loop
       }
       raf = requestAnimationFrame(step);
@@ -841,6 +847,9 @@ export default function Home() {
           padding: 14px 4px 24px;
           cursor: grab;
           user-select: none;
+          touch-action: pan-y;
+          overscroll-behavior-x: contain;
+          -webkit-overflow-scrolling: touch;
           scrollbar-width: thin;
           scrollbar-color: #65a30d transparent;
         }
@@ -1035,7 +1044,10 @@ export default function Home() {
               onPointerMove={conveyorMove}
               onPointerUp={conveyorUp}
               onPointerLeave={conveyorUp}
-              onMouseEnter={() => (autoPausedRef.current = true)}
+              onPointerCancel={conveyorUp}
+              onPointerEnter={(e) => {
+                if (e.pointerType === "mouse") autoPausedRef.current = true;
+              }}
               onMouseLeave={() => {
                 if (!dragRef.current.down) autoPausedRef.current = false;
               }}
