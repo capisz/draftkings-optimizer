@@ -1390,6 +1390,111 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {aiResult && activeAiSuggestion && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-recommendation-title"
+          >
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-lime-500/30 bg-zinc-950 p-5 text-left shadow-2xl shadow-black/60">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-lime-400">
+                    AI Recommendation
+                  </div>
+                  <h2
+                    id="ai-recommendation-title"
+                    className="mt-1 text-lg font-bold text-white"
+                  >
+                    {activeAiSuggestion.slot} slot decision
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissAiRecommendation}
+                  className="rounded-full border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
+                  aria-label="Close AI recommendation"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Suggested swap
+                </div>
+                <div className="mt-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-zinc-500 line-through">
+                      {activeAiSuggestion.out.name}
+                    </div>
+                    <div className="text-base font-semibold text-white">
+                      {activeAiSuggestion.in.name}
+                    </div>
+                  </div>
+                  <div className="text-left text-xs sm:text-right">
+                    <div
+                      className={
+                        activeAiSalaryDelta > 0
+                          ? "text-red-400"
+                          : "text-lime-400"
+                      }
+                    >
+                      {activeAiSalaryDelta >= 0 ? "+" : "-"}$
+                      {Math.abs(activeAiSalaryDelta).toLocaleString()} salary
+                    </div>
+                    <div className="text-sky-400">
+                      {activeAiDkDelta >= 0 ? "+" : ""}
+                      {activeAiDkDelta.toFixed(1)} DK pts
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-sky-500/20 bg-sky-950/30 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                  Why this recommendation was prompted
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-200">
+                  {activeAiSuggestion.reasoning}
+                </p>
+                <p className="mt-3 text-xs leading-5 text-zinc-400">
+                  {aiResult.summary}
+                </p>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-400">
+                New lineup total:{" "}
+                <span className="font-semibold text-lime-300">
+                  ${aiResult.newTotals.totalSalary.toLocaleString()}
+                </span>{" "}
+                ·{" "}
+                <span className="font-semibold text-sky-300">
+                  {aiResult.newTotals.totalAvgDK.toFixed(1)} DK pts
+                </span>
+              </div>
+
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={dismissAiRecommendation}
+                  className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+                >
+                  Keep current player
+                </button>
+                <button
+                  type="button"
+                  onClick={applyAiLineup}
+                  className="rounded-full bg-lime-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-lime-400"
+                >
+                  Use recommendation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
