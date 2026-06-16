@@ -36,7 +36,7 @@ export function PlayerCardBack({ recentGames }: Props) {
         )}
       </div>
 
-      {/* Small flip hint in theme colors */}
+      {/* Small flip hint */}
       <div className="mt-2 w-full text-center">
         <p className="text-[10px] text-lime-400 tracking-wide">
           Click card to flip back
