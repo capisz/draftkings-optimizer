@@ -1072,7 +1072,7 @@ export default function Home() {
                   onClick={copyDkImport}
                   className="inline-flex items-center gap-2 rounded-full bg-zinc-800 border border-lime-600/50 px-4 py-2 text-xs font-semibold text-lime-300 hover:bg-zinc-700 transition-colors"
                 >
-                  {copied ? "✓ Copied!" : "⬇ Copy for DraftKings"}
+                  {copied ? "✓ Copied!" : "Copy for DraftKings"}
                 </Button>
                 <span className="text-[10px] text-zinc-500">
                   CSV (slots + Name/ID) — paste into a DraftKings lineup upload
